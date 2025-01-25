@@ -71,9 +71,9 @@ func (h MainHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(400)
 			return
 		}
-
+		// Set the Location header
+		res.Header().Set("Location", originalUrl)
 		res.WriteHeader(307)
-		res.Write([]byte(originalUrl))
 		return
 	}
 	// No other methods are allowed
