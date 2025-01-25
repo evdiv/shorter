@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 )
@@ -22,9 +23,18 @@ func (h MainHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	log.Println("Request received: ", req)
 
 	if req.Method == http.MethodPost {
-		originalUrl := req.FormValue("URL")
 
-		log.Println("Received POST request to store the URL: ", originalUrl)
+		// Read the raw body since the client sends plain text
+		body, err := io.ReadAll(req.Body)
+
+		if err != nil {
+			log.Println("Failed to read request body: ", err)
+			res.WriteHeader(400)
+			return
+		}
+		defer req.Body.Close()
+
+		originalUrl := string(body)
 
 		if len(originalUrl) == 0 {
 			log.Println("URL should't be empty. Return error / 400 ")
@@ -33,7 +43,7 @@ func (h MainHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		}
 
 		urlKey := store(originalUrl)
-		log.Println("Generated urlKey: ", urlKey)
+		log.Println("For URL: ", originalUrl, "the urlKey: ", urlKey, " is generated")
 
 		res.WriteHeader(201)
 		res.Write([]byte(host + port + "/" + urlKey))
