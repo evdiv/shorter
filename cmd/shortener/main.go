@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -18,15 +19,21 @@ type MainHandler struct{}
 
 func (h MainHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
+	log.Println("Request received: ", req)
+
 	if req.Method == http.MethodPost {
 		originalUrl := req.FormValue("URL")
 
+		log.Println("Received POST request to store the URL: ", originalUrl)
+
 		if len(originalUrl) == 0 {
+			log.Println("URL should't be empty. Return error / 400 ")
 			res.WriteHeader(400)
 			return
 		}
 
 		urlKey := store(originalUrl)
+		log.Println("Generated urlKey: ", urlKey)
 
 		res.WriteHeader(201)
 		res.Write([]byte(host + port + "/" + urlKey))
@@ -36,13 +43,18 @@ func (h MainHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
 		urlKey := req.URL.Path
 
+		log.Println("Received GET request for urlKey: ", urlKey)
+
 		//No incoming parameters
 		if len(urlKey) < 2 {
+			log.Println("urlKey should't be empty. Return error / 400 ")
 			res.WriteHeader(400)
 			return
 		}
 
 		originalUrl := retrieve(urlKey[1:])
+
+		log.Println("Found stored originalUrl: ", originalUrl)
 
 		//The URL is not found in the storage
 		if len(originalUrl) == 0 {
@@ -87,6 +99,7 @@ func retrieve(key string) string {
 func main() {
 	var h MainHandler
 
+	log.Println("Starting the server on port", port)
 	err := http.ListenAndServe(port, h)
 	if err != nil {
 		panic(err)
