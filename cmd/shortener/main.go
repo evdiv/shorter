@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 )
 
@@ -14,7 +13,6 @@ const (
 func main() {
 	var h MainHandler
 
-	log.Println("Starting the server on port", port)
 	err := http.ListenAndServe(port, h)
 	if err != nil {
 		panic(err)
