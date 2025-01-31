@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
 	"net/http"
 )
 
@@ -11,9 +12,14 @@ const (
 )
 
 func main() {
-	var h MainHandler
+	r := chi.NewRouter()
 
-	err := http.ListenAndServe(port, h)
+	r.Post("/", PostUrl)
+	//Needed for avoiding 405 Error according to the requirements.
+	r.Get("/", GetUrl)
+	r.Get("/{urlKey}", GetUrl)
+
+	err := http.ListenAndServe(port, r)
 	if err != nil {
 		panic(err)
 	}

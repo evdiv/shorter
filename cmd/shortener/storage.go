@@ -1,15 +1,18 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
-// Storage for the compressed URLs
 var urlStore = make(map[string]string)
 
-// generateKey generates the corresponding key for the stored URL
+// generateKey - generates the corresponding key for the stored URL
 func generateKey(url string) string {
-	if len(url) < 2 {
+	if len(url) == 0 {
 		return ""
 	}
+
 	var sum int
 	for i, char := range url {
 		// Multiply ASCII value by position (1-based)
@@ -18,8 +21,9 @@ func generateKey(url string) string {
 	return fmt.Sprintf("%x", sum)
 }
 
-// store stores the URL in the storage nad returns the corresponding key
+// store - stores the URL in the storage nad returns the corresponding key
 func store(url string) string {
+	url = strings.ToLower(url)
 	key := generateKey(url)
 
 	if key == "" {
@@ -34,5 +38,9 @@ func store(url string) string {
 
 // retrieve extracts the stored URL by its key
 func retrieve(key string) string {
+	if len(key) == 0 {
+		return ""
+	}
+	key = strings.ToLower(key)
 	return urlStore[key]
 }

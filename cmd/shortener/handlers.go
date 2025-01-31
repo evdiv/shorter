@@ -1,60 +1,52 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 )
 
-type MainHandler struct{}
+func PostUrl(res http.ResponseWriter, req *http.Request) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("Unable to handle the request"))
+		return
+	}
+	defer req.Body.Close()
+	originalUrl := string(body)
 
-func (h MainHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-
-	if req.Method == http.MethodPost {
-
-		// Read the raw body since the client sends plain text
-		body, err := io.ReadAll(req.Body)
-
-		if err != nil {
-			res.WriteHeader(400)
-			return
-		}
-		defer req.Body.Close()
-
-		originalUrl := string(body)
-
-		if len(originalUrl) == 0 {
-			res.WriteHeader(400)
-			return
-		}
-
-		urlKey := store(originalUrl)
-		res.WriteHeader(201)
-		res.Write([]byte(host + port + "/" + urlKey))
+	if originalUrl == "" {
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("The body should contain URL"))
 		return
 	}
 
-	if req.Method == http.MethodGet {
-		urlKey := req.URL.Path
+	urlKey := store(originalUrl)
+	res.WriteHeader(201)
+	res.Write([]byte(host + port + "/" + urlKey))
+	return
+}
 
-		//No incoming parameters
-		if len(urlKey) < 2 {
-			res.WriteHeader(400)
-			return
-		}
+func GetUrl(res http.ResponseWriter, req *http.Request) {
+	urlKey := chi.URLParam(req, "urlKey")
 
-		originalUrl := retrieve(urlKey[1:])
-
-		//The URL is not found in the storage
-		if len(originalUrl) == 0 {
-			res.WriteHeader(400)
-			return
-		}
-		// Set the Location header
-		res.Header().Set("Location", originalUrl)
-		res.WriteHeader(307)
+	if urlKey == "" {
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("Missing URL key"))
 		return
 	}
-	// No other methods are allowed
-	res.WriteHeader(400)
+
+	originalUrl := retrieve(urlKey)
+
+	if len(originalUrl) == 0 {
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("URL is not found"))
+		return
+	}
+
+	// Set the Location header
+	res.WriteHeader(307)
+	res.Header().Set("Location", originalUrl)
 	return
 }

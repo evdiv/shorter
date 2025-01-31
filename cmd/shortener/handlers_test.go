@@ -1,13 +1,13 @@
 package main
 
 import (
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
-	"net/http/httptest"
-	"strings"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
-func TestMainHandler(t *testing.T) {
+func TestRouter(t *testing.T) {
 	type want struct {
 		code   int
 		header string
@@ -39,7 +39,7 @@ func TestMainHandler(t *testing.T) {
 			want: want{
 				code:   400,
 				header: "",
-				body:   "",
+				body:   "The body should contain URL",
 			},
 		},
 		{
@@ -61,7 +61,7 @@ func TestMainHandler(t *testing.T) {
 			want: want{
 				code:   400,
 				header: "",
-				body:   "",
+				body:   "URL is not found",
 			},
 		},
 		{
@@ -72,24 +72,31 @@ func TestMainHandler(t *testing.T) {
 			want: want{
 				code:   400,
 				header: "",
-				body:   "",
+				body:   "Missing URL key",
 			},
 		},
 	}
 
+	client := resty.New()
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.body))
-			res := httptest.NewRecorder()
 
-			var h MainHandler
-			h.ServeHTTP(res, req)
+		url := host + port + tt.target
 
-			result := res.Result()
+		if tt.method == "GET" {
+			res, err := client.R().Get(url)
 
-			assert.Equal(t, tt.want.code, result.StatusCode)
-			assert.Equal(t, tt.want.header, result.Header.Get("Location"))
-			assert.Equal(t, tt.want.body, res.Body.String())
-		})
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.code, res.StatusCode())
+			assert.Equal(t, tt.want.header, res.Header().Get("Location"))
+
+		} else if tt.method == "POST" {
+			res, err := client.R().SetBody(tt.body).Post(url)
+
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.code, res.StatusCode())
+			assert.Equal(t, tt.want.body, string(res.Body()))
+		}
 	}
 }
