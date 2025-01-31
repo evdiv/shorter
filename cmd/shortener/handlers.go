@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func PostUrl(res http.ResponseWriter, req *http.Request) {
+func PostURL(res http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
@@ -14,21 +14,20 @@ func PostUrl(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer req.Body.Close()
-	originalUrl := string(body)
+	originalURL := string(body)
 
-	if originalUrl == "" {
+	if originalURL == "" {
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write([]byte("The body should contain URL"))
 		return
 	}
 
-	urlKey := store(originalUrl)
-	res.WriteHeader(201)
+	urlKey := store(originalURL)
+	res.WriteHeader(http.StatusCreated)
 	res.Write([]byte(host + port + "/" + urlKey))
-	return
 }
 
-func GetUrl(res http.ResponseWriter, req *http.Request) {
+func GetURL(res http.ResponseWriter, req *http.Request) {
 	urlKey := chi.URLParam(req, "urlKey")
 
 	if urlKey == "" {
@@ -37,16 +36,15 @@ func GetUrl(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalUrl := retrieve(urlKey)
+	originalURL := retrieve(urlKey)
 
-	if len(originalUrl) == 0 {
+	if originalURL == "" {
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write([]byte("URL is not found"))
 		return
 	}
 
-	// Set the Location header
-	res.WriteHeader(307)
-	res.Header().Set("Location", originalUrl)
-	return
+	// Set the Location header and return a 307 Temporary Redirect
+	res.Header().Set("Location", originalURL)
+	res.WriteHeader(http.StatusTemporaryRedirect)
 }

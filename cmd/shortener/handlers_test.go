@@ -1,11 +1,20 @@
 package main
 
 import (
-	"github.com/go-resty/resty/v2"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
+
+func setupRouter() *chi.Mux {
+	r := chi.NewRouter()
+	r.Post("/", PostURL)
+	r.Get("/{urlKey}", GetURL)
+	r.Get("/", GetURL)
+	return r
+}
 
 func TestRouter(t *testing.T) {
 	type want struct {
@@ -13,6 +22,7 @@ func TestRouter(t *testing.T) {
 		header string
 		body   string
 	}
+
 	tests := []struct {
 		name   string
 		target string
@@ -21,18 +31,18 @@ func TestRouter(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "POST: Positive. Valid Url for storing",
+			name:   "POST: Positive. Valid URL for storing",
 			target: "/",
 			method: "POST",
 			body:   "https://practicum.yandex.ru/",
 			want: want{
 				code:   201,
 				header: "",
-				body:   "http://localhost:8080/9740",
+				body:   "http://localhost:8080/9740", // Expected body will vary depending on generated key
 			},
 		},
 		{
-			name:   "POST: Negative. Empty Url for storing",
+			name:   "POST: Negative. Empty URL for storing",
 			target: "/",
 			method: "POST",
 			body:   "",
@@ -43,8 +53,8 @@ func TestRouter(t *testing.T) {
 			},
 		},
 		{
-			name:   "GET: Positive. Extract Url by a key",
-			target: "/9740",
+			name:   "GET: Positive. Extract URL by a valid key",
+			target: "/9740", // Use the expected key from the POST test
 			method: "GET",
 			body:   "",
 			want: want{
@@ -54,7 +64,7 @@ func TestRouter(t *testing.T) {
 			},
 		},
 		{
-			name:   "GET: Negative. Extract Url by non-valid key",
+			name:   "GET: Negative. Extract URL by non-valid key",
 			target: "/xxxxxxxxx",
 			method: "GET",
 			body:   "",
@@ -65,7 +75,7 @@ func TestRouter(t *testing.T) {
 			},
 		},
 		{
-			name:   "GET: Negative. Extract Url by empty key",
+			name:   "GET: Negative. Extract URL by empty key",
 			target: "/",
 			method: "GET",
 			body:   "",
@@ -77,26 +87,27 @@ func TestRouter(t *testing.T) {
 		},
 	}
 
-	client := resty.New()
+	router := setupRouter()
+
+	// Run the tests
 	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.body))
 
-		url := host + port + tt.target
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
 
-		if tt.method == "GET" {
-			res, err := client.R().Get(url)
+			res := w.Result()
+			defer res.Body.Close()
 
-			require.NoError(t, err)
+			assert.Equal(t, tt.want.code, res.StatusCode)
 
-			assert.Equal(t, tt.want.code, res.StatusCode())
-			assert.Equal(t, tt.want.header, res.Header().Get("Location"))
+			if tt.want.header != "" {
+				assert.Equal(t, tt.want.header, res.Header.Get("Location"))
+			}
+			body := strings.TrimSpace(w.Body.String())
+			assert.Equal(t, tt.want.body, body)
 
-		} else if tt.method == "POST" {
-			res, err := client.R().SetBody(tt.body).Post(url)
-
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.want.code, res.StatusCode())
-			assert.Equal(t, tt.want.body, string(res.Body()))
-		}
+		})
 	}
 }

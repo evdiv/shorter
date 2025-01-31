@@ -14,10 +14,11 @@ const (
 func main() {
 	r := chi.NewRouter()
 
-	r.Post("/", PostUrl)
-	//Needed for avoiding 405 Error according to the requirements.
-	r.Get("/", GetUrl)
-	r.Get("/{urlKey}", GetUrl)
+	r.Post("/", PostURL)
+	r.Get("/{urlKey}", GetURL)
+
+	// Fallback for empty key
+	r.Get("/", GetURL)
 
 	err := http.ListenAndServe(port, r)
 	if err != nil {

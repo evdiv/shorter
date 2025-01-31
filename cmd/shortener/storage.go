@@ -21,26 +21,20 @@ func generateKey(url string) string {
 	return fmt.Sprintf("%x", sum)
 }
 
-// store - stores the URL in the storage nad returns the corresponding key
-func store(url string) string {
-	url = strings.ToLower(url)
-	key := generateKey(url)
+// store - stores the URL in the storage and returns the corresponding key
+func store(originalURL string) string {
+	originalURL = strings.ToLower(originalURL)
+	urlKey := generateKey(originalURL)
 
-	if key == "" {
+	if urlKey == "" {
 		return ""
 	}
-
-	if urlStore[key] == "" {
-		urlStore[key] = url
-	}
-	return key
+	urlStore[urlKey] = originalURL
+	return urlKey
 }
 
 // retrieve extracts the stored URL by its key
-func retrieve(key string) string {
-	if len(key) == 0 {
-		return ""
-	}
-	key = strings.ToLower(key)
-	return urlStore[key]
+func retrieve(urlKey string) string {
+	urlKey = strings.ToLower(urlKey)
+	return urlStore[urlKey]
 }
