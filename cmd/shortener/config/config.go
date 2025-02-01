@@ -43,6 +43,10 @@ func GetHost(typeOf string) string {
 }
 
 func setHost(typeOf string, flagValue string) {
+	// Remove "http://" or "https:// from the flag if exists
+	flagValue = strings.TrimPrefix(flagValue, "http://")
+	flagValue = strings.TrimPrefix(flagValue, "https://")
+
 	h := strings.Split(flagValue, ":")
 
 	if len(h) == 0 || h[0] == "" || h[1] == "" {
