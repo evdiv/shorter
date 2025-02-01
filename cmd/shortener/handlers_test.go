@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
+	"shorter/cmd/shortener/config"
 	"strings"
 	"testing"
 )
@@ -38,7 +39,7 @@ func TestRouter(t *testing.T) {
 			want: want{
 				code:   201,
 				header: "",
-				body:   "http://localhost:8080/9740", // Expected body will vary depending on generated key
+				body:   config.GetHost("Result") + "/9740", // Expected body will vary depending on generated key
 			},
 		},
 		{

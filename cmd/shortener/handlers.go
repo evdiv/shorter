@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
+	"shorter/cmd/shortener/config"
 )
 
 func PostURL(res http.ResponseWriter, req *http.Request) {
@@ -24,7 +25,7 @@ func PostURL(res http.ResponseWriter, req *http.Request) {
 
 	urlKey := store(originalURL)
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(host + port + "/" + urlKey))
+	res.Write([]byte(config.GetHost("Result") + "/" + urlKey))
 }
 
 func GetURL(res http.ResponseWriter, req *http.Request) {
