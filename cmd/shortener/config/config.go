@@ -2,12 +2,18 @@ package config
 
 import (
 	"flag"
+	"github.com/caarlos0/env/v6"
 	"strings"
 )
 
 type Config struct {
 	HostName string
 	Port     string
+}
+
+type envConfig struct {
+	ServerAddress string `env:"SERVER_ADDRESS"`
+	BaseURL       string `env:"BASE_URL"`
 }
 
 var Local = Config{
@@ -22,17 +28,13 @@ var Result = Config{
 
 func LoadConfig() {
 
-	flag.Func("a", "The hostname to bind the server to", func(flagValue string) error {
-		setHost("Local", flagValue)
-		return nil
-	})
+	// Set the Address of the server
+	// It is the address the users send requests to
+	setServerAddress()
 
-	flag.Func("b", "The result host name", func(flagValue string) error {
-		setHost("Result", flagValue)
-		return nil
-	})
-
-	flag.Parse()
+	//Set the URL that will return to the user
+	//The base domain is used as a base for generated short URLs
+	setBaseAddress()
 }
 
 func GetHost(typeOf string) string {
@@ -40,6 +42,42 @@ func GetHost(typeOf string) string {
 		return Result.HostName + Result.Port
 	}
 	return Local.HostName + Local.Port
+}
+
+func setServerAddress() {
+	//Use the system variable first
+	var ec envConfig
+	env.Parse(&ec)
+
+	if ec.ServerAddress != "" {
+		setHost("Local", ec.ServerAddress)
+		return
+	}
+
+	//Check the flag in the command line
+	flag.Func("a", "The hostname to bind the server to", func(flagValue string) error {
+		setHost("Local", flagValue)
+		return nil
+	})
+	flag.Parse()
+}
+
+func setBaseAddress() {
+	//Use the system variable first
+	var ec envConfig
+	env.Parse(&ec)
+
+	if ec.ServerAddress != "" {
+		setHost("Local", ec.BaseURL)
+		return
+	}
+
+	//check the flag in the command line
+	flag.Func("b", "The result host name", func(flagValue string) error {
+		setHost("Result", flagValue)
+		return nil
+	})
+	flag.Parse()
 }
 
 func setHost(typeOf string, flagValue string) {
