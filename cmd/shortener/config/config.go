@@ -5,14 +5,19 @@ import (
 	"strings"
 )
 
-var Local struct {
+type Config struct {
 	HostName string
 	Port     string
 }
 
-var Result struct {
-	HostName string
-	Port     string
+var Local = Config{
+	HostName: "http://localhost",
+	Port:     ":8080",
+}
+
+var Result = Config{
+	HostName: "http://localhost",
+	Port:     ":8080",
 }
 
 func LoadConfig() {
@@ -40,15 +45,12 @@ func GetHost(typeOf string) string {
 func setHost(typeOf string, flagValue string) {
 	h := strings.Split(flagValue, ":")
 
-	domain := "http://localhost"
-	if h[0] != "" {
-		domain = "http://" + h[0]
+	if len(h) == 0 || h[0] == "" || h[1] == "" {
+		return
 	}
 
-	port := ":8080"
-	if h[1] != "" {
-		port = ":" + h[1]
-	}
+	domain := "http://" + h[0]
+	port := ":" + h[1]
 
 	if typeOf == "Result" {
 		Result.HostName = domain
