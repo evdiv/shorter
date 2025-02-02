@@ -22,10 +22,8 @@ var Result = Config{
 }
 
 func LoadConfig() {
-
 	//Use the system variables first
 	set := useEnvForConfig()
-
 	if !set {
 		useFlagsForConfig()
 	}
@@ -61,15 +59,18 @@ func useEnvForConfig() bool {
 	}
 
 	var ec envConfig
-	env.Parse(&ec)
+	err := env.Parse(&ec)
+
+	if err != nil {
+		return false
+	}
 
 	if ec.ServerAddress != "" && ec.BaseURL != "" {
 		setHost("Local", ec.ServerAddress)
 		setHost("Result", ec.BaseURL)
 		return true
 	}
-
-	return true
+	return false
 }
 
 func setHost(typeOf string, flagValue string) {
