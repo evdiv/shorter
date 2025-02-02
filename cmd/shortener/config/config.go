@@ -11,11 +11,6 @@ type Config struct {
 	Port     string
 }
 
-type envConfig struct {
-	ServerAddress string `env:"SERVER_ADDRESS"`
-	BaseURL       string `env:"BASE_URL"`
-}
-
 var Local = Config{
 	HostName: "http://localhost",
 	Port:     ":8080",
@@ -28,13 +23,12 @@ var Result = Config{
 
 func LoadConfig() {
 
-	// Set the Address of the server
-	// It is the address the users send requests to
-	setServerAddress()
+	//Use the system variables first
+	set := useEnvForConfig()
 
-	//Set the URL that will return to the user
-	//The base domain is used as a base for generated short URLs
-	setBaseAddress()
+	if !set {
+		useFlagsForConfig()
+	}
 }
 
 func GetHost(typeOf string) string {
@@ -44,40 +38,38 @@ func GetHost(typeOf string) string {
 	return Local.HostName + Local.Port
 }
 
-func setServerAddress() {
-	//Use the system variable first
-	var ec envConfig
-	env.Parse(&ec)
+func useFlagsForConfig() {
 
-	if ec.ServerAddress != "" {
-		setHost("Local", ec.ServerAddress)
-		return
-	}
-
-	//Check the flag in the command line
+	// -a is a flag to set the Address of the server users send requests to
 	flag.Func("a", "The hostname to bind the server to", func(flagValue string) error {
 		setHost("Local", flagValue)
 		return nil
 	})
-	flag.Parse()
-}
 
-func setBaseAddress() {
-	//Use the system variable first
-	var ec envConfig
-	env.Parse(&ec)
-
-	if ec.ServerAddress != "" {
-		setHost("Local", ec.BaseURL)
-		return
-	}
-
-	//check the flag in the command line
+	// -b is a flag to set the URL that will be used as a base for generated short URLs
 	flag.Func("b", "The result host name", func(flagValue string) error {
 		setHost("Result", flagValue)
 		return nil
 	})
 	flag.Parse()
+}
+
+func useEnvForConfig() bool {
+	type envConfig struct {
+		ServerAddress string `env:"SERVER_ADDRESS"`
+		BaseURL       string `env:"BASE_URL"`
+	}
+
+	var ec envConfig
+	env.Parse(&ec)
+
+	if ec.ServerAddress != "" && ec.BaseURL != "" {
+		setHost("Local", ec.ServerAddress)
+		setHost("Result", ec.BaseURL)
+		return true
+	}
+
+	return true
 }
 
 func setHost(typeOf string, flagValue string) {
