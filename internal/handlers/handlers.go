@@ -1,10 +1,11 @@
-package main
+package handlers
 
 import (
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
-	"shorter/cmd/shortener/config"
+	"shorter/internal/config"
+	"shorter/internal/storage"
 )
 
 func PostURL(res http.ResponseWriter, req *http.Request) {
@@ -23,7 +24,7 @@ func PostURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	urlKey := store(originalURL)
+	urlKey := storage.Store(originalURL)
 	res.WriteHeader(http.StatusCreated)
 	res.Write([]byte(config.GetHost("Result") + "/" + urlKey))
 }
@@ -37,7 +38,7 @@ func GetURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalURL := retrieve(urlKey)
+	originalURL := storage.Retrieve(urlKey)
 
 	if originalURL == "" {
 		res.WriteHeader(http.StatusBadRequest)

@@ -1,10 +1,10 @@
-package main
+package handlers
 
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
-	"shorter/cmd/shortener/config"
+	"shorter/internal/config"
 	"strings"
 	"testing"
 )

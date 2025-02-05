@@ -3,22 +3,23 @@ package main
 import (
 	"github.com/go-chi/chi/v5"
 	"net/http"
-	"shorter/cmd/shortener/config"
+	"shorter/internal/config"
+	"shorter/internal/handlers"
 )
 
 func main() {
 
 	// Load configuration
-	config.LoadConfig()
+	config.NewConfig(config.EnvConfigLoader{}, config.FlagConfigLoader{})
 
 	// Start HTTP router
 	r := chi.NewRouter()
 
-	r.Post("/", PostURL)
-	r.Get("/{urlKey}", GetURL)
+	r.Post("/", handlers.PostURL)
+	r.Get("/{urlKey}", handlers.GetURL)
 
 	// Fallback for empty key
-	r.Get("/", GetURL)
+	r.Get("/", handlers.GetURL)
 
 	err := http.ListenAndServe(config.Local.Port, r)
 	if err != nil {

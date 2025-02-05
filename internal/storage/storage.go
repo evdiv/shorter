@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ func generateKey(url string) string {
 }
 
 // store - stores the URL in the storage and returns the corresponding key
-func store(originalURL string) string {
+func Store(originalURL string) string {
 	originalURL = strings.ToLower(originalURL)
 	urlKey := generateKey(originalURL)
 
@@ -34,7 +34,7 @@ func store(originalURL string) string {
 }
 
 // retrieve extracts the stored URL by its key
-func retrieve(urlKey string) string {
+func Retrieve(urlKey string) string {
 	urlKey = strings.ToLower(urlKey)
 	return urlStore[urlKey]
 }
