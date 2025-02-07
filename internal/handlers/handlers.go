@@ -6,9 +6,33 @@ import (
 	"net/http"
 	"shorter/internal/config"
 	"shorter/internal/storage"
+	"shorter/internal/urlkey"
 )
 
-func PostURL(res http.ResponseWriter, req *http.Request) {
+// NewRouter initializes the router and storage, returning the chi router
+func NewRouter() *chi.Mux {
+
+	storer := storage.NewMemoryStorage()
+
+	r := chi.NewRouter()
+
+	r.Post("/", func(res http.ResponseWriter, req *http.Request) {
+		PostURL(res, req, storer) // Pass storer to PostURL
+	})
+	r.Get("/{urlKey}", func(res http.ResponseWriter, req *http.Request) {
+		GetURL(res, req, storer) // Pass storer to GetURL
+	})
+
+	// Fallback for empty key
+	r.Get("/", func(res http.ResponseWriter, req *http.Request) {
+		GetURL(res, req, storer) // Pass storer to GetURL
+	})
+
+	return r
+}
+
+// Update PostURL to accept a storage interface
+func PostURL(res http.ResponseWriter, req *http.Request, storer storage.Storer) {
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
@@ -16,20 +40,22 @@ func PostURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer req.Body.Close()
-	originalURL := string(body)
 
-	if originalURL == "" {
+	url, valid := urlkey.IsValidURL(string(body))
+
+	if !valid {
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("The body should contain URL"))
+		res.Write([]byte("The body should contain valid URL"))
 		return
 	}
 
-	urlKey := storage.Store(originalURL)
+	urlKey := storer.Set(url)
 	res.WriteHeader(http.StatusCreated)
 	res.Write([]byte(config.GetHost("Result") + "/" + urlKey))
 }
 
-func GetURL(res http.ResponseWriter, req *http.Request) {
+// Update GetURL to accept a storage interface
+func GetURL(res http.ResponseWriter, req *http.Request, storer storage.Storer) {
 	urlKey := chi.URLParam(req, "urlKey")
 
 	if urlKey == "" {
@@ -38,7 +64,7 @@ func GetURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalURL := storage.Retrieve(urlKey)
+	originalURL := storer.Get(urlKey)
 
 	if originalURL == "" {
 		res.WriteHeader(http.StatusBadRequest)
