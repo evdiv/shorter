@@ -9,7 +9,17 @@ import (
 	"shorter/internal/urlkey"
 )
 
-func PostURL(res http.ResponseWriter, req *http.Request) {
+// Handlers struct holds dependencies (storage)
+type Handlers struct {
+	Storage storage.Storer
+}
+
+// NewHandlers initializes handlers with storage
+func NewHandlers(s storage.Storer) *Handlers {
+	return &Handlers{Storage: s}
+}
+
+func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
@@ -26,12 +36,13 @@ func PostURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	urlKey := storage.Store(originalURL)
+	urlKey := h.Storage.Set(originalURL)
+
 	res.WriteHeader(http.StatusCreated)
 	res.Write([]byte(config.GetHost("Result") + "/" + urlKey))
 }
 
-func GetURL(res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 	urlKey := chi.URLParam(req, "urlKey")
 
 	if urlKey == "" {
@@ -40,7 +51,7 @@ func GetURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalURL := storage.Retrieve(urlKey)
+	originalURL := h.Storage.Get(urlKey)
 
 	if originalURL == "" {
 		res.WriteHeader(http.StatusBadRequest)

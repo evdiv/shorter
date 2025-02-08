@@ -5,15 +5,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
 	"shorter/internal/config"
+	"shorter/internal/storage"
 	"strings"
 	"testing"
 )
 
 func setupRouter() *chi.Mux {
+
+	memStorage := storage.NewMemoryStorage()
+	h := NewHandlers(memStorage)
+
 	r := chi.NewRouter()
-	r.Post("/", PostURL)
-	r.Get("/{urlKey}", GetURL)
-	r.Get("/", GetURL)
+	r.Post("/", h.PostURL)
+	r.Get("/{urlKey}", h.GetURL)
+	r.Get("/", h.GetURL)
+
 	return r
 }
 
