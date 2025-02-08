@@ -50,7 +50,7 @@ func TestRouter(t *testing.T) {
 			want: want{
 				code:   400,
 				header: "",
-				body:   "The body should contain URL",
+				body:   "The body should contain a valid URL",
 			},
 		},
 		{

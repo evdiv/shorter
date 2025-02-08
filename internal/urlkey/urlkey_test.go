@@ -1,11 +1,11 @@
-package storage
+package urlkey
 
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestGenerateKey(t *testing.T) {
+func TestGenerateSlug(t *testing.T) {
 	tests := []struct {
 		name string
 		url  string
@@ -17,6 +17,11 @@ func TestGenerateKey(t *testing.T) {
 			want: "4b23",
 		},
 		{
+			name: "Valid Uppercase and lowercase URL to compress",
+			url:  "http://WWW.Test.COM/",
+			want: "4b23",
+		},
+		{
 			name: "Non-Valid URL",
 			url:  "",
 			want: "",
@@ -25,7 +30,7 @@ func TestGenerateKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateKey(tt.url)
+			got := GenerateSlug(tt.url)
 			t.Logf("Generated Key: %s", got) // Debugging output
 			assert.Equal(t, tt.want, got)
 		})

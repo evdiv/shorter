@@ -1,30 +1,16 @@
 package storage
 
 import (
-	"fmt"
+	"shorter/internal/urlkey"
 	"strings"
 )
 
 var urlStore = make(map[string]string)
 
-// generateKey - generates the corresponding key for the stored URL
-func generateKey(url string) string {
-	if len(url) == 0 {
-		return ""
-	}
-
-	var sum int
-	for i, char := range url {
-		// Multiply ASCII value by position (1-based)
-		sum += int(char) * (i + 1)
-	}
-	return fmt.Sprintf("%x", sum)
-}
-
 // store - stores the URL in the storage and returns the corresponding key
 func Store(originalURL string) string {
 	originalURL = strings.ToLower(originalURL)
-	urlKey := generateKey(originalURL)
+	urlKey := urlkey.GenerateSlug(originalURL)
 
 	if urlKey == "" {
 		return ""

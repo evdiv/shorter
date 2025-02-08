@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"shorter/internal/config"
 	"shorter/internal/storage"
+	"shorter/internal/urlkey"
 )
 
 func PostURL(res http.ResponseWriter, req *http.Request) {
@@ -16,11 +17,12 @@ func PostURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer req.Body.Close()
-	originalURL := string(body)
 
-	if originalURL == "" {
+	originalURL, valid := urlkey.IsValidURL(string(body))
+
+	if !valid {
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("The body should contain URL"))
+		res.Write([]byte("The body should contain a valid URL"))
 		return
 	}
 
