@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"shorter/internal/config"
 	"shorter/internal/handlers"
+	"shorter/internal/middleware"
 	"shorter/internal/storage"
 )
 
@@ -22,6 +23,9 @@ func main() {
 	// Start HTTP router
 	r := chi.NewRouter()
 
+	//Add logging middleware
+	r.Use(middleware.WithLogging)
+	
 	r.Post("/", h.PostURL)
 	r.Get("/{urlKey}", h.GetURL)
 
