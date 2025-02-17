@@ -17,6 +17,7 @@ func setupRouter() *chi.Mux {
 
 	r := chi.NewRouter()
 	r.Post("/", h.PostURL)
+	r.Post("/api/shorten", h.ShortenURL)
 	r.Get("/{urlKey}", h.GetURL)
 	r.Get("/", h.GetURL)
 
@@ -24,6 +25,9 @@ func setupRouter() *chi.Mux {
 }
 
 func TestRouter(t *testing.T) {
+
+	resultHost := config.GetHost("Result")
+
 	type want struct {
 		code   int
 		header string
@@ -41,11 +45,11 @@ func TestRouter(t *testing.T) {
 			name:   "POST: Positive. Valid URL for storing",
 			target: "/",
 			method: "POST",
-			body:   "https://practicum.yandex.ru/",
+			body:   "https://practicum.yandex.ru",
 			want: want{
 				code:   201,
 				header: "",
-				body:   config.GetHost("Result") + "/9740", // Expected body will vary depending on generated key
+				body:   resultHost + "/921c", // Expected body will vary depending on generated key
 			},
 		},
 		{
@@ -61,12 +65,12 @@ func TestRouter(t *testing.T) {
 		},
 		{
 			name:   "GET: Positive. Extract URL by a valid key",
-			target: "/9740", // Use the expected key from the POST test
+			target: "/921c", // Use the expected key from the POST test
 			method: "GET",
 			body:   "",
 			want: want{
 				code:   307,
-				header: "https://practicum.yandex.ru/",
+				header: "https://practicum.yandex.ru",
 				body:   "",
 			},
 		},
@@ -90,6 +94,17 @@ func TestRouter(t *testing.T) {
 				code:   400,
 				header: "",
 				body:   "Missing URL key",
+			},
+		},
+		{
+			name:   "POST: Positive. JSON formatted URL for storing",
+			target: "/api/shorten",
+			method: "POST",
+			body:   `{"url":"https://practicum.yandex.ru"}`,
+			want: want{
+				code:   201,
+				header: "",
+				body:   `{"result":"` + resultHost + `/921c"}`, // Expected body will vary depending on generated key
 			},
 		},
 	}

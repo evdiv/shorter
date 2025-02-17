@@ -25,11 +25,11 @@ func main() {
 
 	//Add logging middleware
 	r.Use(middleware.WithLogging)
-	
-	r.Post("/", h.PostURL)
-	r.Get("/{urlKey}", h.GetURL)
 
-	// Fallback for empty key
+	r.Post("/", h.PostURL)
+	r.Post("/api/shorten", h.ShortenURL)
+
+	r.Get("/{urlKey}", h.GetURL)
 	r.Get("/", h.GetURL)
 
 	err := http.ListenAndServe(config.Local.Port, r)
