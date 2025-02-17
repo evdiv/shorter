@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -46,44 +45,32 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 
 func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 
-	var buf bytes.Buffer
-	type JsonReq struct {
-		Url string `json:"url"`
+	type JSONReq struct {
+		URL string `json:"url"`
 	}
 
-	var jReq JsonReq
-
-	type JsonResp struct {
+	type JSONRes struct {
 		Result string `json:"result"`
 	}
 
-	var jRes JsonResp
+	var jReq JSONReq
+	var jRes JSONRes
 
-	_, err := buf.ReadFrom(req.Body)
-	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Unable to handle the request"))
+	if err := json.NewDecoder(req.Body).Decode(&jReq); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err = json.Unmarshal(buf.Bytes(), &jReq); err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Unable to handle the request"))
-		return
-	}
-
-	originalURL, valid := urlkey.IsValidURL(jReq.Url)
-
-	if !valid {
+	if _, valid := urlkey.IsValidURL(jReq.URL); !valid {
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write([]byte("The body should contain a valid URL"))
 		return
 	}
 
-	urlKey := h.Storage.Set(originalURL)
+	urlKey := h.Storage.Set(jReq.URL)
 	jRes.Result = config.GetHost("Result") + "/" + urlKey
 
-	jsonRes, err := json.Marshal(jRes)
+	out, err := json.Marshal(jRes)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -91,7 +78,7 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(jsonRes))
+	res.Write([]byte(out))
 }
 
 func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
