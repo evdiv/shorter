@@ -26,6 +26,8 @@ func main() {
 	//Add logging middleware
 	r.Use(middleware.WithLogging)
 
+	r.Use(middleware.WithGzip)
+
 	r.Post("/", h.PostURL)
 	r.Post("/api/shorten", h.ShortenURL)
 
