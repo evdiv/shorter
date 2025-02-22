@@ -2,33 +2,19 @@ package main
 
 import (
 	"log"
-	"net/http"
-	"shorter/internal/config"
-	"shorter/internal/handlers"
-	"shorter/internal/router"
-	"shorter/internal/storage"
+	"shorter/internal/app"
 )
 
 func main() {
-
-	// Load configuration
-	config.InitConfig()
-
-	// Initialize storage
-	dataStorage, err := storage.NewFileStorage()
+	//Initialize app
+	application, err := app.NewApp()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Initialize handlers
-	h := handlers.NewHandlers(dataStorage)
-
-	// Initialize router
-	r := router.NewRouter(h)
-
-	err = http.ListenAndServe(config.AppConfig.LocalPort, r)
+	//Run app
+	err = application.Run()
 	if err != nil {
-
-		panic(err)
+		log.Fatal(err)
 	}
 }
