@@ -11,7 +11,6 @@ type Config struct {
 	LocalPort   string
 	ResultHost  string
 	ResultPort  string
-	FileName    string
 	StoragePath string
 }
 
@@ -20,8 +19,7 @@ var AppConfig = Config{
 	LocalPort:   ":8080",
 	ResultHost:  "http://localhost",
 	ResultPort:  ":8080",
-	StoragePath: "./storage/",
-	FileName:    "data.txt",
+	StoragePath: "./storage/data.txt",
 }
 
 // Load configuration from environment variables
@@ -109,10 +107,5 @@ func setHost(typeOf string, flagValue string) {
 func setPath(flagValue string) {
 	// Trim any whitespace
 	path := strings.TrimSpace(flagValue)
-
-	// If the path doesn't end with a '/', append it
-	if !strings.HasSuffix(path, "/") {
-		path += "/"
-	}
 	AppConfig.StoragePath = path
 }

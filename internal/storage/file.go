@@ -31,9 +31,9 @@ func NewFileStorage() (*FileStorage, error) {
 		return nil, err
 	}
 
-	filePath := filepath.Join(config.AppConfig.StoragePath, config.AppConfig.FileName)
+	filePath := config.AppConfig.StoragePath
 
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 644)
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,9 @@ func NewFileStorage() (*FileStorage, error) {
 }
 
 func makeDirInPath() error {
-	err := os.MkdirAll(config.AppConfig.StoragePath, os.ModePerm)
+
+	dir := filepath.Dir(config.AppConfig.StoragePath)
+	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
 	}
@@ -81,7 +83,7 @@ func (f *FileStorage) Set(url string) string {
 	}
 	//Increase the counter
 	f.counter++
-	
+
 	return key
 }
 
