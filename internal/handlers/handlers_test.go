@@ -76,7 +76,7 @@ func TestRouter(t *testing.T) {
 		},
 		{
 			name:   "GET: Negative. Extract URL by non-valid key",
-			target: "/xxxxxxxxx",
+			target: "/error",
 			method: "GET",
 			body:   "",
 			want: want{

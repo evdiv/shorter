@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/go-chi/chi/v5"
+	"log"
 	"net/http"
 	"shorter/internal/config"
 	"shorter/internal/handlers"
@@ -12,13 +13,19 @@ import (
 func main() {
 
 	// Load configuration
-	config.NewConfig(config.EnvConfigLoader{}, config.FlagConfigLoader{})
+	config.InitConfig()
 
-	// Initialize in memory storage
-	memStorage := storage.NewMemoryStorage()
+	// In memory storage
+	//dataStorage := storage.NewMemoryStorage()
+
+	// local file storage
+	dataStorage, err := storage.NewFileStorage()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Handlers with storage dependency
-	h := handlers.NewHandlers(memStorage)
+	h := handlers.NewHandlers(dataStorage)
 
 	// Start HTTP router
 	r := chi.NewRouter()
@@ -34,8 +41,9 @@ func main() {
 	r.Get("/{urlKey}", h.GetURL)
 	r.Get("/", h.GetURL)
 
-	err := http.ListenAndServe(config.Local.Port, r)
+	err = http.ListenAndServe(config.AppConfig.LocalPort, r)
 	if err != nil {
+
 		panic(err)
 	}
 }

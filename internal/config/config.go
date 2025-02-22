@@ -7,83 +7,84 @@ import (
 )
 
 type Config struct {
-	HostName string
-	Port     string
+	LocalHost   string
+	LocalPort   string
+	ResultHost  string
+	ResultPort  string
+	FileName    string
+	StoragePath string
 }
 
-var Local = Config{
-	HostName: "http://localhost",
-	Port:     ":8080",
+var AppConfig = Config{
+	LocalHost:   "http://localhost",
+	LocalPort:   ":8080",
+	ResultHost:  "http://localhost",
+	ResultPort:  ":8080",
+	StoragePath: "./storage/",
+	FileName:    "data.txt",
 }
 
-var Result = Config{
-	HostName: "http://localhost",
-	Port:     ":8080",
-}
-
-// ConfigLoader is an interface for configuration loading strategies
-type ConfigLoader interface {
-	Load() bool
-}
-
-// EnvConfigLoader loads configuration from environment variables
-type EnvConfigLoader struct{}
-
-func (e EnvConfigLoader) Load() bool {
-	type envConfig struct {
-		ServerAddress string `env:"SERVER_ADDRESS"`
-		BaseURL       string `env:"BASE_URL"`
+// Load configuration from environment variables
+func loadFromEnv() bool {
+	var envVars struct {
+		LocalAddr   string `env:"LOCAL_ADDRESS"`
+		ResultAddr  string `env:"RESULT_ADDRESS"`
+		StoragePath string `env:"FILE_STORAGE_PATH"`
 	}
 
-	var ec envConfig
-	err := env.Parse(&ec)
-	if err != nil {
+	if err := env.Parse(&envVars); err != nil {
 		return false
 	}
 
-	if ec.ServerAddress != "" && ec.BaseURL != "" {
-		setHost("Local", ec.ServerAddress)
-		setHost("Result", ec.BaseURL)
-		return true
+	if envVars.LocalAddr != "" {
+		setHost("Local", envVars.LocalAddr)
 	}
-	return false
+	if envVars.ResultAddr != "" {
+		setHost("Result", envVars.ResultAddr)
+	}
+	if envVars.StoragePath != "" {
+		AppConfig.StoragePath = envVars.StoragePath
+	}
+
+	return envVars.LocalAddr != "" && envVars.ResultAddr != "" && envVars.StoragePath != ""
 }
 
-// FlagConfigLoader loads configuration from command-line flags
-type FlagConfigLoader struct{}
-
-func (f FlagConfigLoader) Load() bool {
-	flag.Func("a", "The hostname to bind the server to", func(flagValue string) error {
-		setHost("Local", flagValue)
+// Load configuration from command-line flags
+func loadFromFlags() bool {
+	flag.Func("a", "The local hostname and port", func(value string) error {
+		setHost("Local", value)
 		return nil
 	})
 
-	flag.Func("b", "The result host name", func(flagValue string) error {
-		setHost("Result", flagValue)
+	flag.Func("b", "The result hostname and port", func(value string) error {
+		setHost("Result", value)
 		return nil
 	})
+
+	flag.Func("f", "The path for storing a file", func(value string) error {
+		setPath(value)
+		return nil
+	})
+
 	flag.Parse()
 	return true
 }
 
-// NewConfig uses dependency injection to load configuration
-func NewConfig(loaders ...ConfigLoader) {
-	for _, loader := range loaders {
-		if loader.Load() {
-			return
-		}
+// Initialize configuration with priority: environment -> flags
+func InitConfig() {
+	if !loadFromEnv() {
+		loadFromFlags()
 	}
 }
 
 func GetHost(typeOf string) string {
 	if typeOf == "Result" {
-		return Result.HostName + Result.Port
+		return AppConfig.ResultHost + AppConfig.ResultPort
 	}
-	return Local.HostName + Local.Port
+	return AppConfig.LocalHost + AppConfig.LocalPort
 }
 
 func setHost(typeOf string, flagValue string) {
-	// Remove "http://" or "https:// from the flag if exists
 	flagValue = strings.TrimPrefix(flagValue, "http://")
 	flagValue = strings.TrimPrefix(flagValue, "https://")
 
@@ -97,10 +98,21 @@ func setHost(typeOf string, flagValue string) {
 	port := ":" + h[1]
 
 	if typeOf == "Result" {
-		Result.HostName = domain
-		Result.Port = port
+		AppConfig.ResultHost = domain
+		AppConfig.ResultPort = port
 		return
 	}
-	Local.HostName = domain
-	Local.Port = port
+	AppConfig.LocalHost = domain
+	AppConfig.LocalPort = port
+}
+
+func setPath(flagValue string) {
+	// Trim any whitespace
+	path := strings.TrimSpace(flagValue)
+
+	// If the path doesn't end with a '/', append it
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
+	}
+	AppConfig.StoragePath = path
 }
