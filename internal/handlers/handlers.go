@@ -15,6 +15,14 @@ type Handlers struct {
 	Storage storage.Storer
 }
 
+type JSONReq struct {
+	URL string `json:"url"`
+}
+
+type JSONRes struct {
+	Result string `json:"result"`
+}
+
 // NewHandlers initializes handlers with storage
 func NewHandlers(s storage.Storer) *Handlers {
 	return &Handlers{Storage: s}
@@ -44,15 +52,6 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
-
-	type JSONReq struct {
-		URL string `json:"url"`
-	}
-
-	type JSONRes struct {
-		Result string `json:"result"`
-	}
-
 	var jReq JSONReq
 	var jRes JSONRes
 

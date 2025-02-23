@@ -13,12 +13,11 @@ func InitLogger() {
 	if err != nil {
 		log.Fatal(" Zap Logger init error", err)
 	}
-	defer logger.Sync()
 	sugar = logger.Sugar()
 }
 
-// GetLogger - returns the existing logger or creates the new one
-func GetLogger() *zap.SugaredLogger {
+// NewLogger - returns the existing logger or creates the new one
+func NewLogger() *zap.SugaredLogger {
 	if sugar == nil {
 		InitLogger()
 	}

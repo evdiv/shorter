@@ -3,6 +3,8 @@ package app
 import (
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"shorter/internal/config"
 	"shorter/internal/handlers"
 	"shorter/internal/router"
@@ -19,7 +21,7 @@ func NewApp() (*App, error) {
 	config.InitConfig()
 
 	// Initialize storage
-	dataStorage, err := storage.NewFileStorage()
+	dataStorage, err := storage.NewFileStorage(config.AppConfig.StoragePath)
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +40,16 @@ func NewApp() (*App, error) {
 
 // Run starts the HTTP server.
 func (a *App) Run() error {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+
 	log.Println("Server running on", config.AppConfig.LocalPort)
-	return http.ListenAndServe(config.AppConfig.LocalPort, a.Router)
+
+	go func() {
+		_ = http.ListenAndServe(config.AppConfig.LocalPort, a.Router)
+	}()
+
+	<-sigChan
+	log.Println("Shutdown signal received")
+	return nil
 }

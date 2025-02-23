@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"shorter/internal/config"
 	"shorter/internal/urlkey"
 	"strconv"
 	"strings"
@@ -24,14 +23,12 @@ type FileStorage struct {
 	counter  int // Tracks the number of stored records
 }
 
-func NewFileStorage() (*FileStorage, error) {
+func NewFileStorage(filePath string) (*FileStorage, error) {
 
-	err := makeDirInPath()
+	err := makeDirInPath(filePath)
 	if err != nil {
 		return nil, err
 	}
-
-	filePath := config.AppConfig.StoragePath
 
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -45,22 +42,19 @@ func NewFileStorage() (*FileStorage, error) {
 		count = 0 // Default to 0 if an error occurs
 	}
 
+	// Close the file if an error occurs
+	defer func() {
+		if err != nil {
+			file.Close()
+		}
+	}()
+
 	return &FileStorage{
 		filePath: filePath,
 		file:     file,
 		encoder:  json.NewEncoder(file),
 		counter:  count,
 	}, nil
-}
-
-func makeDirInPath() error {
-
-	dir := filepath.Dir(config.AppConfig.StoragePath)
-	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("failed to create directories: %w", err)
-	}
-	return nil
 }
 
 func (f *FileStorage) Set(url string) string {
@@ -106,7 +100,26 @@ func (f *FileStorage) Get(key string) string {
 	return ""
 }
 
-// Helper function to count lines in the file
+// Close the file when FileStorage is no longer needed
+func (f *FileStorage) Close() error {
+	if f.file != nil {
+		return f.file.Close()
+	}
+	return nil
+}
+
+// makeDirInPath - creates directories to store the file
+func makeDirInPath(filePath string) error {
+
+	dir := filepath.Dir(filePath)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create directories: %w", err)
+	}
+	return nil
+}
+
+// countLines - counts lines in the file
 func countLines(filePath string) (int, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -115,7 +128,7 @@ func countLines(filePath string) (int, error) {
 	return len(splitLines(string(data))), nil
 }
 
-// Helper function to split the lines
+// splitLines - splits the lines by a new line symbol
 func splitLines(data string) []string {
 	lines := []string{}
 	start := 0
@@ -126,7 +139,7 @@ func splitLines(data string) []string {
 		}
 	}
 
-	//Get the last lint in the file if it doesn't have \n
+	//Get the last line in the file if it doesn't have \n
 	if start < len(data) {
 		lines = append(lines, data[start:])
 	}

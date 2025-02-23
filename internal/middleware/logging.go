@@ -31,7 +31,7 @@ func WithLogging(next http.Handler) http.Handler {
 		lrw := &loggingResponseWriter{ResponseWriter: w}
 		next.ServeHTTP(lrw, r)
 
-		logger.GetLogger().Infoln(
+		logger.NewLogger().Infoln(
 			"uri", r.RequestURI,
 			"method", r.Method,
 			"status", lrw.status,
