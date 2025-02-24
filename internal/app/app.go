@@ -18,7 +18,7 @@ type App struct {
 
 func NewApp() (*App, error) {
 	// Load configuration
-	config.InitConfig()
+	config.NewConfig(config.LoadFromFlags, config.LoadFromEnv)
 
 	// Initialize storage
 	dataStorage, err := storage.NewFileStorage(config.AppConfig.StoragePath)
@@ -43,10 +43,10 @@ func (a *App) Run() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
 
-	log.Println("Server running on", config.AppConfig.LocalPort)
+	log.Println("Server running on", config.GetPort("Local"))
 
 	go func() {
-		_ = http.ListenAndServe(config.AppConfig.LocalPort, a.Router)
+		_ = http.ListenAndServe(config.GetPort("Local"), a.Router)
 	}()
 
 	<-sigChan

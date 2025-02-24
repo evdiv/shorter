@@ -2,65 +2,47 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"github.com/caarlos0/env/v6"
+	"net/url"
 	"strings"
 )
 
 type Config struct {
-	LocalHost   string
-	LocalPort   string
-	ResultHost  string
-	ResultPort  string
-	StoragePath string
+	LocalHost   string `env:"SERVER_ADDRESS"`
+	ResultHost  string `env:"RESULT_ADDRESS"`
+	StoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 var AppConfig = Config{
-	LocalHost:   "http://localhost",
-	LocalPort:   ":8080",
-	ResultHost:  "http://localhost",
-	ResultPort:  ":8080",
+	LocalHost:   "http://localhost:8080",
+	ResultHost:  "http://localhost:8080",
 	StoragePath: "./storage/data.txt",
 }
 
-// Load configuration from environment variables
-func loadFromEnv() bool {
-	var envVars struct {
-		LocalAddr   string `env:"LOCAL_ADDRESS"`
-		ResultAddr  string `env:"RESULT_ADDRESS"`
-		StoragePath string `env:"FILE_STORAGE_PATH"`
-	}
-
-	if err := env.Parse(&envVars); err != nil {
+// LoadFromEnv - loads from Environment variables
+func LoadFromEnv() bool {
+	err := env.Parse(&AppConfig)
+	if err != nil {
 		return false
 	}
-
-	if envVars.LocalAddr != "" {
-		setHost("Local", envVars.LocalAddr)
-	}
-	if envVars.ResultAddr != "" {
-		setHost("Result", envVars.ResultAddr)
-	}
-	if envVars.StoragePath != "" {
-		AppConfig.StoragePath = envVars.StoragePath
-	}
-
-	return envVars.LocalAddr != "" && envVars.ResultAddr != "" && envVars.StoragePath != ""
+	return AppConfig.LocalHost != "" && AppConfig.ResultHost != ""
 }
 
-// Load configuration from command-line flags
-func loadFromFlags() bool {
-	flag.Func("a", "The local hostname and port", func(value string) error {
-		setHost("Local", value)
+// LoadFromFlags - loads from command-line flags
+func LoadFromFlags() bool {
+	flag.Func("a", "The hostname to bind the server to", func(value string) error {
+		AppConfig.LocalHost = addPrefix(value)
 		return nil
 	})
 
-	flag.Func("b", "The result hostname and port", func(value string) error {
-		setHost("Result", value)
+	flag.Func("b", "The result host name", func(value string) error {
+		AppConfig.ResultHost = addPrefix(value)
 		return nil
 	})
 
 	flag.Func("f", "The path for storing a file", func(value string) error {
-		setPath(value)
+		AppConfig.StoragePath = value
 		return nil
 	})
 
@@ -68,44 +50,54 @@ func loadFromFlags() bool {
 	return true
 }
 
-// Initialize configuration with priority: environment -> flags
-func InitConfig() {
-	if !loadFromEnv() {
-		loadFromFlags()
+// NewConfig load configs in the required order
+func NewConfig(loaders ...func() bool) {
+	for _, loader := range loaders {
+		success := loader()
+		if success {
+			return // Stop at the first successful loader
+		}
 	}
+	fmt.Println("No valid configuration found, using defaults")
+}
+
+func GetPort(typeOf string) string {
+	if typeOf == "Local" {
+		return extractPort(AppConfig.LocalHost)
+	}
+	return extractPort(AppConfig.ResultHost)
 }
 
 func GetHost(typeOf string) string {
-	if typeOf == "Result" {
-		return AppConfig.ResultHost + AppConfig.ResultPort
+	if typeOf == "Local" {
+		return extractHost(AppConfig.LocalHost)
 	}
-	return AppConfig.LocalHost + AppConfig.LocalPort
+	return extractHost(AppConfig.ResultHost)
 }
 
-func setHost(typeOf string, flagValue string) {
-	flagValue = strings.TrimPrefix(flagValue, "http://")
-	flagValue = strings.TrimPrefix(flagValue, "https://")
-
-	h := strings.Split(flagValue, ":")
-
-	if len(h) == 0 || h[0] == "" || h[1] == "" {
-		return
+func addPrefix(host string) string {
+	host = strings.TrimSpace(host)
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
+		host = "http://" + host
 	}
-
-	domain := "http://" + h[0]
-	port := ":" + h[1]
-
-	if typeOf == "Result" {
-		AppConfig.ResultHost = domain
-		AppConfig.ResultPort = port
-		return
-	}
-	AppConfig.LocalHost = domain
-	AppConfig.LocalPort = port
+	return host
 }
 
-func setPath(flagValue string) {
-	// Trim any whitespace
-	path := strings.TrimSpace(flagValue)
-	AppConfig.StoragePath = path
+func extractPort(address string) string {
+	parsed, err := url.Parse(address)
+	if err != nil {
+		return ""
+	}
+	if parsed.Port() != "" {
+		return ":" + parsed.Port()
+	}
+	return ""
+}
+
+func extractHost(address string) string {
+	parsed, err := url.Parse(address)
+	if err != nil {
+		return ""
+	}
+	return parsed.Scheme + "://" + parsed.Hostname()
 }
