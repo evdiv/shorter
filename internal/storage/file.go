@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"shorter/internal/urlkey"
@@ -41,7 +42,11 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 		fmt.Println("Warning: Failed to count lines:", err)
 		count = 0 // Default to 0 if an error occurs
 	}
-
+	if count > 0 {
+		log.Printf("The Storage file: %s exists and contains %d records", filePath, count)
+	} else {
+		log.Printf("The new Storage file: %s was created", filePath)
+	}
 	// Close the file if an error occurs
 	defer func() {
 		if err != nil {
@@ -116,6 +121,7 @@ func makeDirInPath(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
 	}
+	log.Println("Directory created: " + dir)
 	return nil
 }
 

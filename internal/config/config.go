@@ -9,12 +9,14 @@ import (
 )
 
 type Config struct {
+	LoadedFrom  string
 	LocalHost   string `env:"LOCAL_ADDRESS"`
 	ResultHost  string `env:"RESULT_ADDRESS"`
 	StoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 var AppConfig = Config{
+	LoadedFrom:  "default",
 	LocalHost:   "http://localhost:8080",
 	ResultHost:  "http://localhost:8080",
 	StoragePath: "./storage/data.txt",
@@ -26,7 +28,11 @@ func LoadFromEnv() bool {
 	if err != nil {
 		return false
 	}
-	return AppConfig.LocalHost != "" && AppConfig.ResultHost != ""
+	if AppConfig.LocalHost != "" && AppConfig.ResultHost != "" {
+		AppConfig.LoadedFrom = "environment"
+		return true
+	}
+	return false
 }
 
 // LoadFromFlags - loads from command-line flags
@@ -45,6 +51,8 @@ func LoadFromFlags() bool {
 		AppConfig.StoragePath = value
 		return nil
 	})
+
+	AppConfig.LoadedFrom = "flags"
 
 	flag.Parse()
 	return true

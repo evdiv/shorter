@@ -45,6 +45,11 @@ func (a *App) Run() error {
 
 	log.Println("Server running on", config.GetPort("Local"))
 
+	log.Println("Config loaded from: " + config.AppConfig.LoadedFrom)
+	log.Println("Local Host: " + config.AppConfig.LocalHost)
+	log.Println("Result Host: " + config.AppConfig.ResultHost)
+	log.Println("File Storage Path: " + config.AppConfig.StoragePath)
+
 	go func() {
 		_ = http.ListenAndServe(config.GetPort("Local"), a.Router)
 	}()
