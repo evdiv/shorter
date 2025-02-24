@@ -26,8 +26,6 @@ func setupRouter() *chi.Mux {
 
 func TestRouter(t *testing.T) {
 
-	resultHost := config.GetHost("Result")
-
 	type want struct {
 		code   int
 		header string
@@ -49,7 +47,7 @@ func TestRouter(t *testing.T) {
 			want: want{
 				code:   201,
 				header: "",
-				body:   resultHost + "/921c", // Expected body will vary depending on generated key
+				body:   config.AppConfig.ResultHost + "/921c", // Expected body will vary depending on generated key
 			},
 		},
 		{
@@ -104,7 +102,7 @@ func TestRouter(t *testing.T) {
 			want: want{
 				code:   201,
 				header: "",
-				body:   `{"result":"` + resultHost + `/921c"}`, // Expected body will vary depending on generated key
+				body:   `{"result":"` + config.AppConfig.ResultHost + `/921c"}`, // Expected body will vary depending on generated key
 			},
 		},
 	}

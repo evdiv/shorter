@@ -9,7 +9,7 @@ import (
 )
 
 type Config struct {
-	LocalHost   string `env:"SERVER_ADDRESS"`
+	LocalHost   string `env:"LOCAL_ADDRESS"`
 	ResultHost  string `env:"RESULT_ADDRESS"`
 	StoragePath string `env:"FILE_STORAGE_PATH"`
 }

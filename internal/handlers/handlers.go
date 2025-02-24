@@ -48,7 +48,7 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 	urlKey := h.Storage.Set(originalURL)
 
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(config.GetHost("Result") + "/" + urlKey))
+	res.Write([]byte(config.AppConfig.ResultHost + "/" + urlKey))
 }
 
 func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
@@ -67,7 +67,7 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	urlKey := h.Storage.Set(jReq.URL)
-	jRes.Result = config.GetHost("Result") + "/" + urlKey
+	jRes.Result = config.AppConfig.ResultHost + "/" + urlKey
 
 	out, err := json.Marshal(jRes)
 	if err != nil {
