@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/caarlos0/env/v6"
-	"log"
 	"net/url"
 	"strings"
 )
@@ -14,13 +13,15 @@ type Config struct {
 	LocalHost   string `env:"LOCAL_ADDRESS"`
 	ResultHost  string `env:"RESULT_ADDRESS"`
 	StoragePath string `env:"FILE_STORAGE_PATH"`
+	FileName    string
 }
 
 var AppConfig = Config{
 	LoadedFrom:  "default",
 	LocalHost:   "http://localhost:8080",
 	ResultHost:  "http://localhost:8080",
-	StoragePath: "/tmp/data.txt",
+	StoragePath: "./tmp/",
+	FileName:    "data.txt",
 }
 
 // LoadFromEnv - loads from Environment variables
@@ -49,8 +50,7 @@ func LoadFromFlags() bool {
 	})
 
 	flag.Func("f", "The path for storing a file", func(value string) error {
-		log.Printf("The path for storing a file %s", value)
-		AppConfig.StoragePath = value
+		setPath(value)
 		return nil
 	})
 
@@ -110,4 +110,14 @@ func extractHost(address string) string {
 		return ""
 	}
 	return parsed.Scheme + "://" + parsed.Hostname()
+}
+
+func setPath(path string) {
+	path = strings.TrimSpace(path)
+
+	// If the path doesn't end with a '/', append it
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
+	}
+	AppConfig.StoragePath = path
 }
