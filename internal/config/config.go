@@ -19,7 +19,7 @@ var AppConfig = Config{
 	LoadedFrom:  "default",
 	LocalHost:   "http://localhost:8080",
 	ResultHost:  "http://localhost:8080",
-	StoragePath: "./storage/data.txt",
+	StoragePath: "./tmp/data.txt",
 }
 
 // LoadFromEnv - loads from Environment variables
