@@ -26,7 +26,7 @@ type FileStorage struct {
 }
 
 func NewFileStorage(storagePath string) (*FileStorage, error) {
-	log.Printf("Using file storage at: %s", storagePath)
+	log.Printf("Using storage path: %s", storagePath)
 
 	err := makeDirInPath(storagePath)
 	if err != nil {
@@ -34,6 +34,7 @@ func NewFileStorage(storagePath string) (*FileStorage, error) {
 	}
 
 	filePath := filepath.Join(storagePath, config.AppConfig.FileName)
+	log.Printf("Using full file storage path: %s", filePath)
 
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {

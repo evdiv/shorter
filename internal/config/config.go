@@ -20,7 +20,7 @@ var AppConfig = Config{
 	LoadedFrom:  "default",
 	LocalHost:   "http://localhost:8080",
 	ResultHost:  "http://localhost:8080",
-	StoragePath: "./tmp/",
+	StoragePath: "/tmp/",
 	FileName:    "data.txt",
 }
 
