@@ -13,15 +13,13 @@ type Config struct {
 	LocalHost   string `env:"LOCAL_ADDRESS"`
 	ResultHost  string `env:"RESULT_ADDRESS"`
 	StoragePath string `env:"FILE_STORAGE_PATH"`
-	FileName    string
 }
 
 var AppConfig = Config{
 	LoadedFrom:  "default",
 	LocalHost:   "http://localhost:8080",
 	ResultHost:  "http://localhost:8080",
-	StoragePath: "/tmp/",
-	FileName:    "data.txt",
+	StoragePath: "./tmp/data.txt",
 }
 
 // LoadFromEnv - loads from Environment variables
@@ -30,7 +28,8 @@ func LoadFromEnv() bool {
 	if err != nil {
 		return false
 	}
-	if AppConfig.LocalHost != "" && AppConfig.ResultHost != "" {
+
+	if AppConfig.LocalHost != "" && AppConfig.ResultHost != "" && AppConfig.StoragePath != "" {
 		AppConfig.LoadedFrom = "environment"
 		return true
 	}

@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"shorter/internal/config"
 	"shorter/internal/urlkey"
 	"strconv"
 	"strings"
@@ -25,15 +24,14 @@ type FileStorage struct {
 	counter  int // Tracks the number of stored records
 }
 
-func NewFileStorage(storagePath string) (*FileStorage, error) {
-	log.Printf("Using storage path: %s", storagePath)
+func NewFileStorage(filePath string) (*FileStorage, error) {
+	log.Printf("Using storage path: %s", filePath)
 
-	err := makeDirInPath(storagePath)
+	err := makeDirInPath(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	filePath := filepath.Join(storagePath, config.AppConfig.FileName)
 	log.Printf("Using full file storage path: %s", filePath)
 
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
@@ -119,8 +117,9 @@ func (f *FileStorage) Close() error {
 }
 
 // makeDirInPath - creates directories to store the file
-func makeDirInPath(storagePath string) error {
-	err := os.MkdirAll(storagePath, os.ModePerm)
+func makeDirInPath(filePath string) error {
+	dir := filepath.Dir(filePath)
+	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
 	}
