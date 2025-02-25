@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"github.com/caarlos0/env/v6"
 	"net/url"
 	"strings"
@@ -76,21 +77,21 @@ func LoadFromFlags() bool {
 }
 
 // NewConfig load configs in the required order
-//func NewConfig(loaders ...func() bool) {
-//	for _, loader := range loaders {
-//		success := loader()
-//		if success {
-//			return // Stop at the first successful loader
-//		}
-//	}
-//	fmt.Println("No valid configuration found, using defaults")
-//}
-
-func NewConfig() {
-	if !LoadFromEnv() {
-		LoadFromFlags()
+func NewConfig(loaders ...func() bool) {
+	for _, loader := range loaders {
+		success := loader()
+		if success {
+			return // Stop at the first successful loader
+		}
 	}
+	fmt.Println("No valid configuration found, using defaults")
 }
+
+//func NewConfig() {
+//	if !LoadFromEnv() {
+//		LoadFromFlags()
+//	}
+//}
 
 func GetPort(typeOf string) string {
 	if typeOf == "Local" {
