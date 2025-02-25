@@ -25,7 +25,7 @@ type FileStorage struct {
 }
 
 func NewFileStorage(filePath string) (*FileStorage, error) {
-	filePath = normalizeFilePath(filePath)
+	log.Printf("Using file storage at: %s", filePath)
 
 	err := makeDirInPath(filePath)
 	if err != nil {
@@ -104,18 +104,6 @@ func (f *FileStorage) Get(key string) string {
 		}
 	}
 	return ""
-}
-
-// normalizeFilePath - set the path relative to the app directory
-func normalizeFilePath(filePath string) string {
-	filePath = strings.TrimSpace(filePath) // Remove leading/trailing spaces
-	if strings.HasPrefix(filePath, "./") {
-		return filePath
-	}
-	if strings.HasPrefix(filePath, "/") {
-		return "." + filePath
-	}
-	return "./" + filePath
 }
 
 // Close the file when FileStorage is no longer needed

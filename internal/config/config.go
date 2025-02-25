@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/caarlos0/env/v6"
+	"log"
 	"net/url"
 	"strings"
 )
@@ -19,7 +20,7 @@ var AppConfig = Config{
 	LoadedFrom:  "default",
 	LocalHost:   "http://localhost:8080",
 	ResultHost:  "http://localhost:8080",
-	StoragePath: "./tmp/data.txt",
+	StoragePath: "/tmp/data.txt",
 }
 
 // LoadFromEnv - loads from Environment variables
@@ -48,6 +49,7 @@ func LoadFromFlags() bool {
 	})
 
 	flag.Func("f", "The path for storing a file", func(value string) error {
+		log.Printf("The path for storing a file %s", value)
 		AppConfig.StoragePath = value
 		return nil
 	})
