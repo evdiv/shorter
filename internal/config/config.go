@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
 	"github.com/caarlos0/env/v6"
 	"net/url"
 	"strings"
@@ -10,9 +9,9 @@ import (
 
 type Config struct {
 	LoadedFrom  string
-	LocalHost   string `env:"LOCAL_ADDRESS"`
-	ResultHost  string `env:"RESULT_ADDRESS"`
-	StoragePath string `env:"FILE_STORAGE_PATH"`
+	LocalHost   string
+	ResultHost  string
+	StoragePath string
 }
 
 var AppConfig = Config{
@@ -24,12 +23,30 @@ var AppConfig = Config{
 
 // LoadFromEnv - loads from Environment variables
 func LoadFromEnv() bool {
-	err := env.Parse(&AppConfig)
-	if err != nil {
+
+	var envVars struct {
+		LocalAddr   string `env:"LOCAL_ADDRESS"`
+		ResultAddr  string `env:"RESULT_ADDRESS"`
+		StoragePath string `env:"FILE_STORAGE_PATH"`
+	}
+
+	if err := env.Parse(&envVars); err != nil {
 		return false
 	}
 
-	if AppConfig.LocalHost != "" && AppConfig.ResultHost != "" && AppConfig.StoragePath != "" {
+	if envVars.LocalAddr != "" {
+		AppConfig.LocalHost = addPrefix(envVars.LocalAddr)
+	}
+
+	if envVars.ResultAddr != "" {
+		AppConfig.ResultHost = addPrefix(envVars.ResultAddr)
+	}
+
+	if envVars.StoragePath != "" {
+		AppConfig.StoragePath = envVars.StoragePath
+	}
+
+	if envVars.LocalAddr != "" && envVars.ResultAddr != "" && envVars.StoragePath != "" {
 		AppConfig.LoadedFrom = "environment"
 		return true
 	}
@@ -53,21 +70,26 @@ func LoadFromFlags() bool {
 		return nil
 	})
 
-	AppConfig.LoadedFrom = "flags"
-
 	flag.Parse()
+	AppConfig.LoadedFrom = "flags"
 	return true
 }
 
 // NewConfig load configs in the required order
-func NewConfig(loaders ...func() bool) {
-	for _, loader := range loaders {
-		success := loader()
-		if success {
-			return // Stop at the first successful loader
-		}
+//func NewConfig(loaders ...func() bool) {
+//	for _, loader := range loaders {
+//		success := loader()
+//		if success {
+//			return // Stop at the first successful loader
+//		}
+//	}
+//	fmt.Println("No valid configuration found, using defaults")
+//}
+
+func NewConfig() {
+	if !LoadFromEnv() {
+		LoadFromFlags()
 	}
-	fmt.Println("No valid configuration found, using defaults")
 }
 
 func GetPort(typeOf string) string {
@@ -113,10 +135,5 @@ func extractHost(address string) string {
 
 func setPath(path string) {
 	path = strings.TrimSpace(path)
-
-	// If the path doesn't end with a '/', append it
-	if !strings.HasSuffix(path, "/") {
-		path += "/"
-	}
 	AppConfig.StoragePath = path
 }

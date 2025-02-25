@@ -18,7 +18,7 @@ type App struct {
 
 func NewApp() (*App, error) {
 	// Load configuration
-	config.NewConfig(config.LoadFromFlags, config.LoadFromEnv)
+	config.NewConfig()
 
 	// Initialize storage
 	dataStorage, err := storage.NewFileStorage(config.AppConfig.StoragePath)
