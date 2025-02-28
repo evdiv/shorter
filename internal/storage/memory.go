@@ -29,3 +29,7 @@ func (m *MemoryStorage) Get(key string) string {
 	key = strings.ToLower(key)
 	return m.data[key]
 }
+
+func (m *MemoryStorage) IsAvailable() bool {
+	return m.data != nil
+}

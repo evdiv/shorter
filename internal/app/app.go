@@ -13,15 +13,16 @@ import (
 
 type App struct {
 	Router      http.Handler
-	DataStorage *storage.FileStorage
+	DataStorage storage.Storer
 }
 
 func NewApp() (*App, error) {
 	// Load configuration
-	config.NewConfig(config.LoadFromEnv, config.LoadFromFlags)
+	config.NewConfig(config.LoadFromEnv, config.LoadFromFlags, config.LoadDefault)
 
 	// Initialize storage
-	dataStorage, err := storage.NewFileStorage(config.AppConfig.StoragePath)
+	dataStorage, err := storage.NewDbStorage(config.AppConfig.StoragePath)
+
 	if err != nil {
 		return nil, err
 	}

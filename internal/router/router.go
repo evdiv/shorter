@@ -17,6 +17,7 @@ func NewRouter(h *handlers.Handlers) http.Handler {
 	// Add routes
 	r.Post("/", h.PostURL)
 	r.Post("/api/shorten", h.ShortenURL)
+	r.Get("/ping", h.IsAvailable)
 	r.Get("/{urlKey}", h.GetURL)
 	r.Get("/", h.GetURL)
 

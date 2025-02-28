@@ -101,3 +101,10 @@ func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Location", originalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
+
+func (h *Handlers) IsAvailable(res http.ResponseWriter, req *http.Request) {
+	if h.Storage.IsAvailable() {
+		res.WriteHeader(http.StatusOK)
+	}
+	res.WriteHeader(http.StatusInternalServerError)
+}

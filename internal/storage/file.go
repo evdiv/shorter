@@ -116,6 +116,10 @@ func (f *FileStorage) Close() error {
 	return nil
 }
 
+func (f *FileStorage) IsAvailable() bool {
+	return f.file != nil
+}
+
 // makeDirInPath - creates directories to store the file
 func makeDirInPath(filePath string) error {
 	dir := filepath.Dir(filePath)

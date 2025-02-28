@@ -10,44 +10,31 @@ import (
 
 type Config struct {
 	LoadedFrom  string
-	LocalHost   string
-	ResultHost  string
-	StoragePath string
+	LocalHost   string `env:"LOCAL_ADDRESS"`
+	ResultHost  string `env:"RESULT_ADDRESS"`
+	StoragePath string `env:"FILE_STORAGE_PATH"`
+	DbDSN       string `env:"DATABASE_DSN"`
 }
 
 var AppConfig = Config{
-	LoadedFrom:  "default",
-	LocalHost:   "http://localhost:8080",
-	ResultHost:  "http://localhost:8080",
-	StoragePath: "./tmp/data.txt",
+	LoadedFrom:  "",
+	LocalHost:   "",
+	ResultHost:  "",
+	StoragePath: "",
+	DbDSN:       "",
 }
 
 // LoadFromEnv - loads from Environment variables
 func LoadFromEnv() bool {
 
-	var envVars struct {
-		LocalAddr   string `env:"LOCAL_ADDRESS"`
-		ResultAddr  string `env:"RESULT_ADDRESS"`
-		StoragePath string `env:"FILE_STORAGE_PATH"`
-	}
-
-	if err := env.Parse(&envVars); err != nil {
+	if err := env.Parse(&AppConfig); err != nil {
 		return false
 	}
 
-	if envVars.LocalAddr != "" {
-		AppConfig.LocalHost = addPrefix(envVars.LocalAddr)
-	}
+	AppConfig.LocalHost = addPrefix(AppConfig.LocalHost)
+	AppConfig.ResultHost = addPrefix(AppConfig.ResultHost)
 
-	if envVars.ResultAddr != "" {
-		AppConfig.ResultHost = addPrefix(envVars.ResultAddr)
-	}
-
-	if envVars.StoragePath != "" {
-		AppConfig.StoragePath = envVars.StoragePath
-	}
-
-	if envVars.LocalAddr != "" && envVars.ResultAddr != "" && envVars.StoragePath != "" {
+	if AppConfig.LocalHost != "" && AppConfig.ResultHost != "" && AppConfig.StoragePath != "" {
 		AppConfig.LoadedFrom = "environment"
 		return true
 	}
@@ -71,8 +58,22 @@ func LoadFromFlags() bool {
 		return nil
 	})
 
+	flag.Func("d", "Database connection string", func(value string) error {
+		AppConfig.DbDSN = value
+		return nil
+	})
+
 	flag.Parse()
 	AppConfig.LoadedFrom = "flags"
+	return true
+}
+
+func LoadDefault() bool {
+	AppConfig.LoadedFrom = "default"
+	AppConfig.LocalHost = "http://localhost:8080"
+	AppConfig.ResultHost = "http://localhost:8080"
+	AppConfig.StoragePath = "./tmp/data.txt"
+	AppConfig.DbDSN = "postgres://username:password@localhost:5432/mydb"
 	return true
 }
 
@@ -86,12 +87,6 @@ func NewConfig(loaders ...func() bool) {
 	}
 	fmt.Println("No valid configuration found, using defaults")
 }
-
-//func NewConfig() {
-//	if !LoadFromEnv() {
-//		LoadFromFlags()
-//	}
-//}
 
 func GetPort(typeOf string) string {
 	if typeOf == "Local" {
@@ -109,6 +104,9 @@ func GetHost(typeOf string) string {
 
 func addPrefix(host string) string {
 	host = strings.TrimSpace(host)
+	if host == "" {
+		return host
+	}
 	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
 		host = "http://" + host
 	}
