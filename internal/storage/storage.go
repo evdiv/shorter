@@ -19,6 +19,10 @@ func NewStorage(appConfig config.Config) (Storer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize database storage: %w", err)
 		}
+		err = dbStorage.Migrate()
+		if err != nil {
+			return nil, fmt.Errorf("failed to migrate database storage: %w", err)
+		}
 		return dbStorage, nil
 	}
 	// If FilePath is provided (but no DB), initialize file storage
