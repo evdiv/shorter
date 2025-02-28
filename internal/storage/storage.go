@@ -14,8 +14,8 @@ type Storer interface {
 
 func NewStorage(appConfig config.Config) (Storer, error) {
 	// If DB connection is provided, initialize DB storage
-	if appConfig.DbConnection != "" {
-		dbStorage, err := NewDbStorage(appConfig.DbConnection)
+	if appConfig.DBConnection != "" {
+		dbStorage, err := NewDBStorage(appConfig.DBConnection)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize database storage: %w", err)
 		}

@@ -6,38 +6,35 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type DbStorage struct {
+type DBStorage struct {
 	db         *sql.DB
 	connection string
 }
 
-func NewDbStorage(connection string) (*DbStorage, error) {
+func NewDBStorage(connection string) (*DBStorage, error) {
 	db, err := sql.Open("pgx", connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %s", connection)
 	}
-	return &DbStorage{
+	return &DBStorage{
 		connection: connection,
 		db:         db,
 	}, nil
 }
 
-func (storage *DbStorage) IsAvailable() bool {
+func (storage *DBStorage) IsAvailable() bool {
 	err := storage.db.Ping()
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
-func (storage *DbStorage) Set(url string) string {
+func (storage *DBStorage) Set(url string) string {
 	return ""
 }
 
-func (storage *DbStorage) Get(key string) string {
+func (storage *DBStorage) Get(key string) string {
 	return ""
 }
 
-func (storage *DbStorage) Close() error {
+func (storage *DBStorage) Close() error {
 	return storage.db.Close()
 }

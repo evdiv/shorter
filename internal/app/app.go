@@ -49,7 +49,7 @@ func (a *App) Run() error {
 	log.Println("Local Host: " + a.Config.LocalHost)
 	log.Println("Result Host: " + a.Config.ResultHost)
 	log.Println("File Storage Path: " + a.Config.StoragePath)
-	log.Println("Db Connection String: " + a.Config.DbConnection)
+	log.Println("Db Connection String: " + a.Config.DBConnection)
 
 	go func() {
 		_ = http.ListenAndServe(config.GetPort("Local"), a.Router)

@@ -11,7 +11,7 @@ type Config struct {
 	LocalHost    string `env:"LOCAL_ADDRESS"`
 	ResultHost   string `env:"RESULT_ADDRESS"`
 	StoragePath  string `env:"FILE_STORAGE_PATH"`
-	DbConnection string `env:"DATABASE_DSN"`
+	DBConnection string `env:"DATABASE_DSN"`
 	LoadedFrom   map[string]string
 }
 
@@ -19,7 +19,7 @@ var AppConfig = Config{
 	LocalHost:    "",
 	ResultHost:   "",
 	StoragePath:  "",
-	DbConnection: "",
+	DBConnection: "",
 	LoadedFrom:   make(map[string]string),
 }
 
@@ -41,7 +41,7 @@ func LoadFromEnv() {
 	AppConfig.LocalHost = addPrefix(AppConfig.LocalHost)
 	AppConfig.ResultHost = addPrefix(AppConfig.ResultHost)
 	AppConfig.StoragePath = strings.TrimSpace(AppConfig.StoragePath)
-	AppConfig.DbConnection = strings.TrimSpace(AppConfig.DbConnection)
+	AppConfig.DBConnection = strings.TrimSpace(AppConfig.DBConnection)
 }
 
 // LoadFromFlags - loads from command-line flags
@@ -68,9 +68,9 @@ func LoadFromFlags() {
 		})
 	}
 
-	if AppConfig.DbConnection == "" {
+	if AppConfig.DBConnection == "" {
 		flag.Func("d", "Database connection string", func(value string) error {
-			AppConfig.DbConnection = strings.TrimSpace(value)
+			AppConfig.DBConnection = strings.TrimSpace(value)
 			return nil
 		})
 	}
@@ -87,9 +87,9 @@ func LoadDefault() {
 	if AppConfig.StoragePath == "" {
 		AppConfig.StoragePath = "./tmp/data.txt"
 	}
-	if AppConfig.DbConnection == "" {
-		AppConfig.DbConnection = "postgres://postgres:55555@localhost:5432/postgres"
-	}
+	//if AppConfig.DBConnection == "" {
+	//	//AppConfig.DBConnection = "postgres://postgres:55555@localhost:5432/postgres"
+	//}
 }
 
 func GetPort(typeOf string) string {
