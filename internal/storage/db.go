@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"shorter/internal/urlkey"
 )
 
 type DBStorage struct {
@@ -41,11 +42,28 @@ func (storage *DBStorage) IsAvailable() bool {
 }
 
 func (storage *DBStorage) Set(url string) string {
-	return ""
+	key := urlkey.GenerateSlug(url)
+	if key == "" {
+		return ""
+	}
+	_, err := storage.db.Exec("INSERT INTO Links (ShortURL, OriginalURL) VALUES ($1, $2)", key, url)
+	if err != nil {
+		fmt.Errorf("failed to insert a new record to the Database: %s", err)
+		return ""
+	}
+	return key
 }
 
 func (storage *DBStorage) Get(key string) string {
-	return ""
+	row := storage.db.QueryRow("SELECT OriginalURL FROM Links WHERE ShortURL = $1", key)
+
+	var url string
+	err := row.Scan(&url)
+	if err != nil {
+		fmt.Errorf("failed to select a record from the Database: %s", err)
+		return ""
+	}
+	return url
 }
 
 func (storage *DBStorage) Close() error {
