@@ -7,25 +7,24 @@ import (
 )
 
 type DbStorage struct {
-	db  sql.DB
-	dsn string
+	db         *sql.DB
+	connection string
 }
 
-func NewDbStorage(dsn string) (*DbStorage, error) {
-	db, err := sql.Open("pgx", dsn)
+func NewDbStorage(connection string) (*DbStorage, error) {
+	db, err := sql.Open("pgx", connection)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to connect to database: %s", connection)
 	}
 	return &DbStorage{
-		dsn: dsn,
-		db:  *db,
+		connection: connection,
+		db:         db,
 	}, nil
 }
 
 func (storage *DbStorage) IsAvailable() bool {
 	err := storage.db.Ping()
 	if err != nil {
-		fmt.Println("Database connection failed:", err)
 		return false
 	}
 	return true
@@ -37,4 +36,8 @@ func (storage *DbStorage) Set(url string) string {
 
 func (storage *DbStorage) Get(key string) string {
 	return ""
+}
+
+func (storage *DbStorage) Close() error {
+	return storage.db.Close()
 }

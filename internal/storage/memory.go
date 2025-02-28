@@ -33,3 +33,8 @@ func (m *MemoryStorage) Get(key string) string {
 func (m *MemoryStorage) IsAvailable() bool {
 	return m.data != nil
 }
+
+// Close - ensure that the in memory storage fits the Storer interface
+func (m *MemoryStorage) Close() error {
+	return nil
+}

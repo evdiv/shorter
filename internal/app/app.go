@@ -12,30 +12,32 @@ import (
 )
 
 type App struct {
-	Router      http.Handler
-	DataStorage storage.Storer
+	Router  http.Handler
+	Config  *config.Config
+	Storage storage.Storer
 }
 
 func NewApp() (*App, error) {
 	// Load configuration
-	config.NewConfig(config.LoadFromEnv, config.LoadFromFlags, config.LoadDefault)
+	appConfig := config.NewConfig(config.LoadFromEnv, config.LoadFromFlags, config.LoadDefault)
 
 	// Initialize storage
-	dataStorage, err := storage.NewDbStorage(config.AppConfig.StoragePath)
+	appStorage, err := storage.NewStorage(*appConfig)
 
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize handlers
-	h := handlers.NewHandlers(dataStorage)
+	h := handlers.NewHandlers(appStorage)
 
 	// Initialize router
 	r := router.NewRouter(h)
 
 	return &App{
-		Router:      r,
-		DataStorage: dataStorage,
+		Router:  r,
+		Config:  appConfig,
+		Storage: appStorage,
 	}, nil
 }
 
@@ -44,12 +46,10 @@ func (a *App) Run() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
 
-	log.Println("Server running on", config.GetPort("Local"))
-
-	log.Println("Config loaded from: " + config.AppConfig.LoadedFrom)
-	log.Println("Local Host: " + config.AppConfig.LocalHost)
-	log.Println("Result Host: " + config.AppConfig.ResultHost)
-	log.Println("File Storage Path: " + config.AppConfig.StoragePath)
+	log.Println("Local Host: " + a.Config.LocalHost)
+	log.Println("Result Host: " + a.Config.ResultHost)
+	log.Println("File Storage Path: " + a.Config.StoragePath)
+	log.Println("Db Connection String: " + a.Config.DbConnection)
 
 	go func() {
 		_ = http.ListenAndServe(config.GetPort("Local"), a.Router)
@@ -57,5 +57,6 @@ func (a *App) Run() error {
 
 	<-sigChan
 	log.Println("Shutdown signal received")
+	a.Storage.Close()
 	return nil
 }
