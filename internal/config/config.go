@@ -88,9 +88,9 @@ func LoadDefault() {
 		AppConfig.StoragePath = "./tmp/data.txt"
 	}
 
-	if AppConfig.DBConnection == "" {
-		AppConfig.DBConnection = "postgres://postgres:61278@localhost:5432/postgres"
-	}
+	//if AppConfig.DBConnection == "" {
+	//	AppConfig.DBConnection = "postgres://postgres:61278@localhost:5432/postgres"
+	//}
 }
 
 func GetPort(typeOf string) string {

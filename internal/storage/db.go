@@ -48,7 +48,6 @@ func (storage *DBStorage) Set(url string) string {
 	}
 	_, err := storage.db.Exec("INSERT INTO Links (ShortURL, OriginalURL) VALUES ($1, $2)", key, url)
 	if err != nil {
-		fmt.Errorf("failed to insert a new record to the Database: %s", err)
 		return ""
 	}
 	return key
@@ -60,7 +59,6 @@ func (storage *DBStorage) Get(key string) string {
 	var url string
 	err := row.Scan(&url)
 	if err != nil {
-		fmt.Errorf("failed to select a record from the Database: %s", err)
 		return ""
 	}
 	return url
