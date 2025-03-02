@@ -25,11 +25,12 @@ func NewDBStorage(connection string) (*DBStorage, error) {
 
 // Migrate - creates the tables if they don't exist
 func (storage *DBStorage) Migrate() error {
-	_, err := storage.db.Exec("CREATE TABLE IF NOT EXISTS Links " +
-		"(ID SERIAL PRIMARY KEY," +
-		"ShortURL VARCHAR(128) NOT NULL UNIQUE," +
-		"OriginalURL VARCHAR(512) NOT NULL," +
-		"AddedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+	_, err := storage.db.Exec("CREATE TABLE IF NOT EXISTS Links "+
+		"(ID SERIAL PRIMARY KEY,"+
+		"CorrelationID VARCHAR(128) NULL",
+		"ShortURL VARCHAR(128) NOT NULL UNIQUE,"+
+			"OriginalURL VARCHAR(512) NOT NULL,"+
+			"AddedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
 	if err != nil {
 		return fmt.Errorf("failed to create migration table: %s", err)
 	}

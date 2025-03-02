@@ -16,11 +16,16 @@ type Handlers struct {
 }
 
 type JSONReq struct {
-	URL string `json:"url"`
+	URL         string `json:"url,omitempty"`
+	CorrID      string `json:"correlation_id,omitempty"`
+	OriginalURL string `json:"original_url,omitempty"`
 }
 
 type JSONRes struct {
-	Result string `json:"result"`
+	Result      string `json:"result,omitempty"`
+	CorrID      string `json:"correlation_id,omitempty"`
+	ShortURL    string `json:"short_url,omitempty"`
+	OriginalURL string `json:"-"`
 }
 
 // NewHandlers initializes handlers with storage
@@ -54,7 +59,6 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 	var jReq JSONReq
 	var jRes JSONRes
-
 	if err := json.NewDecoder(req.Body).Decode(&jReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -107,4 +111,42 @@ func (h *Handlers) IsAvailable(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusOK)
 	}
 	res.WriteHeader(http.StatusInternalServerError)
+}
+
+func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
+	jReqBatch := []JSONReq{}
+	jResBatch := []JSONRes{}
+
+	if err := json.NewDecoder(req.Body).Decode(&jReqBatch); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer req.Body.Close()
+
+	for _, jReq := range jReqBatch {
+		if _, valid := urlkey.IsValidURL(jReq.OriginalURL); !valid {
+			res.WriteHeader(http.StatusBadRequest)
+			res.Write([]byte("The batch contains incorrect URL: " + jReq.URL))
+			return
+		}
+
+		urlKey := h.Storage.Set(jReq.OriginalURL)
+
+		if urlKey != "" {
+			shortUrl := config.AppConfig.ResultHost + "/" + urlKey
+			jResBatch = append(jResBatch, JSONRes{CorrID: jReq.CorrID, ShortURL: shortUrl, OriginalURL: jReq.OriginalURL})
+		}
+	}
+
+	out, err := json.Marshal(jResBatch)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	res.Write([]byte(out))
+
+	return
 }
