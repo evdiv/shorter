@@ -133,8 +133,8 @@ func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
 		urlKey := h.Storage.Set(jReq.OriginalURL)
 
 		if urlKey != "" {
-			shortUrl := config.AppConfig.ResultHost + "/" + urlKey
-			jResBatch = append(jResBatch, JSONRes{CorrID: jReq.CorrID, ShortURL: shortUrl, OriginalURL: jReq.OriginalURL})
+			shortURL := config.AppConfig.ResultHost + "/" + urlKey
+			jResBatch = append(jResBatch, JSONRes{CorrID: jReq.CorrID, ShortURL: shortURL, OriginalURL: jReq.OriginalURL})
 		}
 	}
 
@@ -147,6 +147,4 @@ func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
 	res.Write([]byte(out))
-
-	return
 }
