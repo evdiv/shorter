@@ -80,7 +80,7 @@ func TestRouter(t *testing.T) {
 			want: want{
 				code:   400,
 				header: "",
-				body:   "URL is not found",
+				body:   "OriginalURL is empty",
 			},
 		},
 		{
