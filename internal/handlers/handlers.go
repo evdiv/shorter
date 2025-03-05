@@ -8,6 +8,7 @@ import (
 	"shorter/internal/config"
 	"shorter/internal/storage"
 	"shorter/internal/urlkey"
+	"strings"
 )
 
 // Handlers struct holds dependencies (storage)
@@ -50,9 +51,19 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	urlKey := h.Storage.Set(originalURL)
+	urlKey, err := h.Storage.Set(originalURL)
+	HeaderStatus := http.StatusCreated
 
-	res.WriteHeader(http.StatusCreated)
+	if err != nil {
+		if strings.Contains(err.Error(), "already exists") {
+			HeaderStatus = http.StatusConflict
+		} else {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	res.WriteHeader(HeaderStatus)
 	res.Write([]byte(config.AppConfig.ResultHost + "/" + urlKey))
 }
 
@@ -70,7 +81,17 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	urlKey := h.Storage.Set(jReq.URL)
+	urlKey, err := h.Storage.Set(jReq.URL)
+	HeaderStatus := http.StatusCreated
+
+	if err != nil {
+		if strings.Contains(err.Error(), "already exists") {
+			HeaderStatus = http.StatusConflict
+		} else {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	jRes.Result = config.AppConfig.ResultHost + "/" + urlKey
 
 	out, err := json.Marshal(jRes)
@@ -80,8 +101,8 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(out))
+	res.WriteHeader(HeaderStatus)
+	res.Write(out)
 }
 
 func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
@@ -93,11 +114,11 @@ func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalURL := h.Storage.Get(urlKey)
+	originalURL, err := h.Storage.Get(urlKey)
 
-	if originalURL == "" {
+	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("URL is not found"))
+		res.Write([]byte(err.Error()))
 		return
 	}
 
@@ -130,9 +151,9 @@ func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		urlKey := h.Storage.Set(jReq.OriginalURL)
+		urlKey, err := h.Storage.Set(jReq.OriginalURL)
 
-		if urlKey != "" {
+		if err == nil {
 			shortURL := config.AppConfig.ResultHost + "/" + urlKey
 			jResBatch = append(jResBatch, JSONRes{CorrID: jReq.CorrID, ShortURL: shortURL, OriginalURL: jReq.OriginalURL})
 		}

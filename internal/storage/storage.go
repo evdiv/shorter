@@ -6,8 +6,8 @@ import (
 )
 
 type Storer interface {
-	Set(url string) string
-	Get(key string) string
+	Set(url string) (string, error)
+	Get(key string) (string, error)
 	IsAvailable() bool
 	Close() error
 }

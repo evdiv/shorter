@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"shorter/internal/urlkey"
 	"strings"
 )
@@ -15,19 +16,24 @@ func NewMemoryStorage() *MemoryStorage {
 }
 
 // Set - stores a url into the memory storage
-func (m *MemoryStorage) Set(url string) string {
-	key := urlkey.GenerateSlug(url)
-	if key == "" {
-		return ""
+func (m *MemoryStorage) Set(OriginalURL string) (string, error) {
+	ShortURL := urlkey.GenerateSlug(OriginalURL)
+	if ShortURL == "" {
+		return "", fmt.Errorf("ShortURL is empty")
 	}
-	m.data[key] = url
-	return key
+	m.data[ShortURL] = OriginalURL
+	return ShortURL, nil
 }
 
 // Get - retrieves a value from memory
-func (m *MemoryStorage) Get(key string) string {
-	key = strings.ToLower(key)
-	return m.data[key]
+func (m *MemoryStorage) Get(ShortURL string) (string, error) {
+	ShortURL = strings.ToLower(ShortURL)
+	OriginalURL := m.data[ShortURL]
+
+	if OriginalURL == "" {
+		return "", fmt.Errorf("OriginalURL is empty")
+	}
+	return OriginalURL, nil
 }
 
 func (m *MemoryStorage) IsAvailable() bool {

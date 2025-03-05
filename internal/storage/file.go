@@ -65,47 +65,48 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	}, nil
 }
 
-func (f *FileStorage) Set(url string) string {
-	key := urlkey.GenerateSlug(url)
-	if key == "" {
-		return ""
+func (f *FileStorage) Set(OriginalURL string) (string, error) {
+	ShortURL := urlkey.GenerateSlug(OriginalURL)
+	if ShortURL == "" {
+		return "", fmt.Errorf("ShortURL is empty")
 	}
 	rowID := strconv.Itoa(f.counter + 1)
 
 	row := Row{
 		ID:          rowID,
-		ShortURL:    key,
-		OriginalURL: url,
+		ShortURL:    ShortURL,
+		OriginalURL: OriginalURL,
 	}
 	// Write JSON entry
 	err := f.encoder.Encode(row)
 	if err != nil {
-		fmt.Println("Failed to write to file:", err)
-		return ""
+		return "", fmt.Errorf("Failed to write to file: %s", err)
 	}
 	//Increase the counter
 	f.counter++
 
-	return key
+	return ShortURL, nil
 }
 
-func (f *FileStorage) Get(key string) string {
-	key = strings.ToLower(key)
+func (f *FileStorage) Get(ShortURL string) (string, error) {
+	ShortURL = strings.ToLower(ShortURL)
+	if ShortURL == "" {
+		return "", fmt.Errorf("ShortURL is empty")
+	}
 
 	data, err := os.ReadFile(f.filePath)
 	if err != nil {
-		fmt.Println("Failed to read file:", err)
-		return ""
+		return "", fmt.Errorf("Failed to read file: %s", err)
 	}
 	// Search for the short URL
 	for _, line := range splitLines(string(data)) {
 		var row Row
 		err := json.Unmarshal([]byte(line), &row)
-		if err == nil && row.ShortURL == key {
-			return row.OriginalURL
+		if err == nil && row.ShortURL == ShortURL {
+			return row.OriginalURL, nil
 		}
 	}
-	return ""
+	return "", fmt.Errorf("Failed to find OriginalURL by ShortURL: %s", ShortURL)
 }
 
 // Close the file when FileStorage is no longer needed
