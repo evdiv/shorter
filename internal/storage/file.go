@@ -3,7 +3,6 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"shorter/internal/urlkey"
@@ -25,14 +24,10 @@ type FileStorage struct {
 }
 
 func NewFileStorage(filePath string) (*FileStorage, error) {
-	log.Printf("Using storage path: %s", filePath)
-
 	err := makeDirInPath(filePath)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Printf("Using full file storage path: %s", filePath)
 
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -42,14 +37,9 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	// Count existing lines (records)
 	count, err := countLines(filePath)
 	if err != nil {
-		fmt.Println("Warning: Failed to count lines:", err)
 		count = 0 // Default to 0 if an error occurs
 	}
-	if count > 0 {
-		log.Printf("The Storage file: %s exists and contains %d records", filePath, count)
-	} else {
-		log.Printf("The new Storage file: %s was created", filePath)
-	}
+
 	// Close the file if an error occurs
 	defer func() {
 		if err != nil {
@@ -68,7 +58,7 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 func (f *FileStorage) Set(OriginalURL string) (string, error) {
 	ShortURL := urlkey.GenerateSlug(OriginalURL)
 	if ShortURL == "" {
-		return "", fmt.Errorf("ShortURL is empty")
+		return "", fmt.Errorf("shortURL is empty")
 	}
 	rowID := strconv.Itoa(f.counter + 1)
 
@@ -80,23 +70,21 @@ func (f *FileStorage) Set(OriginalURL string) (string, error) {
 	// Write JSON entry
 	err := f.encoder.Encode(row)
 	if err != nil {
-		return "", fmt.Errorf("Failed to write to file: %s", err)
+		return "", fmt.Errorf("failed to write to file: %s", err)
 	}
-	//Increase the counter
 	f.counter++
-
 	return ShortURL, nil
 }
 
 func (f *FileStorage) Get(ShortURL string) (string, error) {
 	ShortURL = strings.ToLower(ShortURL)
 	if ShortURL == "" {
-		return "", fmt.Errorf("ShortURL is empty")
+		return "", fmt.Errorf("shortURL is empty")
 	}
 
 	data, err := os.ReadFile(f.filePath)
 	if err != nil {
-		return "", fmt.Errorf("Failed to read file: %s", err)
+		return "", fmt.Errorf("failed to read file: %s", err)
 	}
 	// Search for the short URL
 	for _, line := range splitLines(string(data)) {
@@ -106,7 +94,7 @@ func (f *FileStorage) Get(ShortURL string) (string, error) {
 			return row.OriginalURL, nil
 		}
 	}
-	return "", fmt.Errorf("Failed to find OriginalURL by ShortURL: %s", ShortURL)
+	return "", fmt.Errorf("failed to find OriginalURL by ShortURL: %s", ShortURL)
 }
 
 // Close the file when FileStorage is no longer needed
@@ -150,7 +138,6 @@ func splitLines(data string) []string {
 			start = i + 1
 		}
 	}
-
 	//Get the last line in the file if it doesn't have \n
 	if start < len(data) {
 		lines = append(lines, data[start:])

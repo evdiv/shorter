@@ -70,7 +70,7 @@ func (storage *DBStorage) Get(ShortURL string) (string, error) {
 
 	err := row.Scan(&OriginalURL)
 	if err != nil {
-		return "", fmt.Errorf("Failed to get original url: %s", err)
+		return "", fmt.Errorf("failed to get original url: %s", err)
 	}
 	return OriginalURL, nil
 }
