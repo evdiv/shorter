@@ -18,12 +18,16 @@ func NewMemoryStorage() *MemoryStorage {
 
 // Set - stores a url into the memory storage
 func (m *MemoryStorage) Set(OriginalURL string) (string, error) {
-	ShortURL := urlkey.GenerateSlug(OriginalURL)
-	if ShortURL == "" {
+	urlKey := urlkey.GenerateSlug(OriginalURL)
+	if urlKey == "" {
 		return "", fmt.Errorf("ShortURL is empty")
 	}
-	m.data[ShortURL] = OriginalURL
-	return ShortURL, nil
+	if m.data[urlKey] != "" {
+		err := fmt.Errorf("the URL: %s is already stored in the memory", m.data[urlKey])
+		return urlKey, NewStorageError("already exists", OriginalURL, urlKey, err)
+	}
+	m.data[urlKey] = OriginalURL
+	return urlKey, nil
 }
 
 func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {

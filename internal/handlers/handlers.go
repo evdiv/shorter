@@ -65,7 +65,7 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 
 	if _, valid := urlkey.IsValidURL(jReq.URL); !valid {
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("The body should contain a valid URL"))
+		res.Write([]byte("The incoming JSON string should contain a valid URL"))
 		return
 	}
 

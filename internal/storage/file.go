@@ -57,15 +57,21 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 }
 
 func (f *FileStorage) Set(OriginalURL string) (string, error) {
-	ShortURL := urlkey.GenerateSlug(OriginalURL)
-	if ShortURL == "" {
+	urlKey := urlkey.GenerateSlug(OriginalURL)
+	if urlKey == "" {
 		return "", fmt.Errorf("shortURL is empty")
 	}
+	//Check for duplications
+	if storedURL, _ := f.Get(urlKey); storedURL != "" {
+		err := fmt.Errorf("the URL: %s is already stored in the file", storedURL)
+		return urlKey, NewStorageError("already exists", storedURL, urlKey, err)
+	}
+
 	rowID := strconv.Itoa(f.counter + 1)
 
 	row := Row{
 		ID:          rowID,
-		ShortURL:    ShortURL,
+		ShortURL:    urlKey,
 		OriginalURL: OriginalURL,
 	}
 	// Write JSON entry
@@ -74,7 +80,7 @@ func (f *FileStorage) Set(OriginalURL string) (string, error) {
 		return "", fmt.Errorf("failed to write to file: %s", err)
 	}
 	f.counter++
-	return ShortURL, nil
+	return urlKey, nil
 }
 
 func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {

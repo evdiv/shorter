@@ -43,11 +43,11 @@ func TestRouter(t *testing.T) {
 			name:   "POST: Positive. Valid URL for storing",
 			target: "/",
 			method: "POST",
-			body:   "https://practicum.yandex.ru",
+			body:   "https://yandex.ru",
 			want: want{
 				code:   201,
 				header: "",
-				body:   config.AppConfig.ResultHost + "/921c", // Expected body will vary depending on generated key
+				body:   config.AppConfig.ResultHost + "/3985", // Expected body will vary depending on generated key
 			},
 		},
 		{
@@ -63,12 +63,12 @@ func TestRouter(t *testing.T) {
 		},
 		{
 			name:   "GET: Positive. Extract URL by a valid key",
-			target: "/921c", // Use the expected key from the POST test
+			target: "/3985", // Use the expected key from the POST test
 			method: "GET",
 			body:   "",
 			want: want{
 				code:   307,
-				header: "https://practicum.yandex.ru",
+				header: "https://yandex.ru",
 				body:   "",
 			},
 		},
@@ -103,6 +103,41 @@ func TestRouter(t *testing.T) {
 				code:   201,
 				header: "",
 				body:   `{"result":"` + config.AppConfig.ResultHost + `/921c"}`, // Expected body will vary depending on generated key
+			},
+		},
+		{
+			name:   "POST: Negative. JSON contains empty URL for storing",
+			target: "/api/shorten",
+			method: "POST",
+			body:   `{"url":""}`,
+			want: want{
+				code:   400,
+				header: "",
+				body:   `The incoming JSON string should contain a valid URL`,
+			},
+		},
+		{
+			name:   "POST: Negative. URL Already exists",
+			target: "/api/shorten",
+			method: "POST",
+			body:   `{"url":"https://practicum.yandex.ru"}`,
+			want: want{
+				code:   409,
+				header: "",
+				body:   `{"result":"` + config.AppConfig.ResultHost + `/921c"}`,
+			},
+		},
+		{
+			name:   "POST: Positive. Adding butch URLs",
+			target: "/api/shorten/batch",
+			method: "POST",
+			body: `[{"correlation_id":"aaa", "original_url":"https://aaa.ru"},
+						{"correlation_id":"bbb", "original_url":"https://bbb.ru"}]`,
+			want: want{
+				code:   201,
+				header: "",
+				body: `[{"correlation_id":"aaa", "short_url":"http://localhost:8080/247e"},
+						{"correlation_id":"bbb", "short_url":"http://localhost:8080/249c"}]`,
 			},
 		},
 	}
