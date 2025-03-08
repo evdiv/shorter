@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"shorter/internal/config"
 	"shorter/internal/models"
 	"shorter/internal/urlkey"
 )
@@ -43,26 +44,26 @@ func (storage *DBStorage) IsAvailable() bool {
 }
 
 func (storage *DBStorage) Set(OriginalURL string) (string, error) {
-	ShortURL := urlkey.GenerateSlug(OriginalURL)
-	if ShortURL == "" {
+	urlKey := urlkey.GenerateSlug(OriginalURL)
+	if urlKey == "" {
 		return "", fmt.Errorf("the short url is empty")
 	}
 
 	result, err := storage.db.Exec(`INSERT INTO Links (ShortURL, OriginalURL) 
 											VALUES ($1, $2) 
 											ON CONFLICT (OriginalURL)
-											DO NOTHING`, ShortURL, OriginalURL)
+											DO NOTHING`, urlKey, OriginalURL)
 	if err != nil {
-		return "", NewStorageError("failed to insert", OriginalURL, ShortURL, err)
+		return "", NewStorageError("failed to insert", OriginalURL, urlKey, err)
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return "", fmt.Errorf("failed to get affected rows: %s", err)
 	}
 	if rowsAffected == 0 {
-		return ShortURL, NewStorageError("already exists", OriginalURL, ShortURL, err)
+		return urlKey, NewStorageError("already exists", OriginalURL, urlKey, err)
 	}
-	return ShortURL, nil
+	return urlKey, nil
 }
 
 func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
@@ -75,17 +76,17 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes
 	defer stmt.Close()
 
 	for _, el := range jReqBatch {
-		ShortURL := urlkey.GenerateSlug(el.OriginalURL)
-		if ShortURL == "" {
-			return nil, fmt.Errorf("the short url for Original Url: %s is empty", el.OriginalURL)
+		urlKey := urlkey.GenerateSlug(el.OriginalURL)
+		if urlKey == "" {
+			return nil, fmt.Errorf("the urlKey for Original Url: %s is empty", el.OriginalURL)
 		}
-		_, err := stmt.Exec(ShortURL, el.OriginalURL)
+		_, err := stmt.Exec(urlKey, el.OriginalURL)
 		if err != nil {
-			return nil, NewStorageError("failed to insert", ShortURL, el.OriginalURL, err)
+			return nil, NewStorageError("failed to insert", urlKey, el.OriginalURL, err)
 		}
 		row := models.JSONRes{
 			CorrID:      el.CorrID,
-			ShortURL:    ShortURL,
+			ShortURL:    config.AppConfig.ResultHost + "/" + urlKey,
 			OriginalURL: el.OriginalURL,
 		}
 		jResBatch = append(jResBatch, row)
