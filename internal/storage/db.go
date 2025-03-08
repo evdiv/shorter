@@ -77,7 +77,7 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes
 	for _, el := range jReqBatch {
 		ShortURL := urlkey.GenerateSlug(el.OriginalURL)
 		if ShortURL == "" {
-			return nil, fmt.Errorf("the short url for Original Url: " + el.OriginalURL + " is empty")
+			return nil, fmt.Errorf("the short url for Original Url: %s is empty", el.OriginalURL)
 		}
 		_, err := stmt.Exec(ShortURL, el.OriginalURL)
 		if err != nil {
