@@ -16,14 +16,9 @@ func NewRouter(h *handlers.Handlers) http.Handler {
 
 	// Add routes
 	r.Post("/", h.PostURL)
-
-	//Adding batch in prepared stmt
-	r.Post("/api/shorten/batch", h.ShortenBatchURLInBulk)
-
-	//Adding batch line by line
-	//r.Post("/api/shorten/batch", h.ShortenBatchURL)
-
+	r.Post("/api/shorten/batch", h.ShortenBatchURL)
 	r.Post("/api/shorten", h.ShortenURL)
+
 	r.Get("/ping", h.IsAvailable)
 	r.Get("/{urlKey}", h.GetURL)
 	r.Get("/", h.GetURL)

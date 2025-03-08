@@ -123,49 +123,8 @@ func (h *Handlers) IsAvailable(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusInternalServerError)
 }
 
-// ShortenBatchURL - inserts records line by line
+// ShortenBatchURL - inserts batch records in storage
 func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
-	var jReqBatch []models.JSONReq
-	var jResBatch []models.JSONRes
-
-	if err := json.NewDecoder(req.Body).Decode(&jReqBatch); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-	defer req.Body.Close()
-
-	for _, jReq := range jReqBatch {
-		if _, valid := urlkey.IsValidURL(jReq.OriginalURL); !valid {
-			res.WriteHeader(http.StatusBadRequest)
-			res.Write([]byte("The batch contains incorrect URL: " + jReq.URL))
-			return
-		}
-
-		urlKey, err := h.Storage.Set(jReq.OriginalURL)
-
-		if err == nil {
-			row := models.JSONRes{
-				CorrID:      jReq.CorrID,
-				ShortURL:    config.AppConfig.ResultHost + "/" + urlKey,
-				OriginalURL: jReq.OriginalURL,
-			}
-			jResBatch = append(jResBatch, row)
-		}
-	}
-
-	out, err := json.Marshal(jResBatch)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(out))
-}
-
-// ShortenBatchURLInBulk - inserts records in bulk with a single query
-func (h *Handlers) ShortenBatchURLInBulk(res http.ResponseWriter, req *http.Request) {
 	jReqBatch := []models.JSONReq{}
 
 	if err := json.NewDecoder(req.Body).Decode(&jReqBatch); err != nil {
