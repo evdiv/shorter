@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"shorter/internal/models"
 	"shorter/internal/urlkey"
 	"strings"
 )
@@ -23,6 +24,25 @@ func (m *MemoryStorage) Set(OriginalURL string) (string, error) {
 	}
 	m.data[ShortURL] = OriginalURL
 	return ShortURL, nil
+}
+
+func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
+	jResBatch := make([]models.JSONRes, len(jReqBatch))
+
+	for _, el := range jReqBatch {
+		ShortURL, err := m.Set(el.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+
+		row := models.JSONRes{
+			CorrID:      el.CorrID,
+			ShortURL:    ShortURL,
+			OriginalURL: el.OriginalURL,
+		}
+		jResBatch = append(jResBatch, row)
+	}
+	return jResBatch, nil
 }
 
 // Get - retrieves a value from memory

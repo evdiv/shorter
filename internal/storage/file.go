@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"shorter/internal/models"
 	"shorter/internal/urlkey"
 	"strconv"
 	"strings"
@@ -74,6 +75,25 @@ func (f *FileStorage) Set(OriginalURL string) (string, error) {
 	}
 	f.counter++
 	return ShortURL, nil
+}
+
+func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
+	jResBatch := make([]models.JSONRes, len(jReqBatch))
+
+	for _, el := range jReqBatch {
+		ShortURL, err := f.Set(el.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+
+		row := models.JSONRes{
+			CorrID:      el.CorrID,
+			ShortURL:    ShortURL,
+			OriginalURL: el.OriginalURL,
+		}
+		jResBatch = append(jResBatch, row)
+	}
+	return jResBatch, nil
 }
 
 func (f *FileStorage) Get(ShortURL string) (string, error) {

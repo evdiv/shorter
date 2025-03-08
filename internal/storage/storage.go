@@ -3,10 +3,12 @@ package storage
 import (
 	"fmt"
 	"shorter/internal/config"
+	"shorter/internal/models"
 )
 
 type Storer interface {
 	Set(url string) (string, error)
+	SetBatch(entries []models.JSONReq) ([]models.JSONRes, error)
 	Get(key string) (string, error)
 	IsAvailable() bool
 	Close() error

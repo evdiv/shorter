@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"shorter/internal/models"
 	"shorter/internal/urlkey"
 )
 
@@ -48,20 +49,49 @@ func (storage *DBStorage) Set(OriginalURL string) (string, error) {
 	}
 
 	result, err := storage.db.Exec(`INSERT INTO Links (ShortURL, OriginalURL) 
-										VALUES ($1, $2) 
-										ON CONFLICT (OriginalURL)
-										DO NOTHING`, ShortURL, OriginalURL)
+											VALUES ($1, $2) 
+											ON CONFLICT (OriginalURL)
+											DO NOTHING`, ShortURL, OriginalURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to insert link: %s", err)
+		return "", NewStorageError("failed to insert", OriginalURL, ShortURL, err)
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return "", fmt.Errorf("failed to get affected rows: %s", err)
 	}
 	if rowsAffected == 0 {
-		return ShortURL, fmt.Errorf("the original url: %s already exists", OriginalURL)
+		return ShortURL, NewStorageError("already exists", OriginalURL, ShortURL, err)
 	}
 	return ShortURL, nil
+}
+
+func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
+	jResBatch := []models.JSONRes{}
+
+	stmt, err := storage.db.Prepare(`INSERT INTO Links (ShortURL, OriginalURL) VALUES ($1, $2)`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement: %s", err)
+	}
+	defer stmt.Close()
+
+	for _, el := range jReqBatch {
+		ShortURL := urlkey.GenerateSlug(el.OriginalURL)
+		if ShortURL == "" {
+			return nil, fmt.Errorf("the short url for Original Url: " + el.OriginalURL + " is empty")
+		}
+		_, err := stmt.Exec(ShortURL, el.OriginalURL)
+		if err != nil {
+			return nil, NewStorageError("failed to insert", ShortURL, el.OriginalURL, err)
+		}
+		row := models.JSONRes{
+			CorrID:      el.CorrID,
+			ShortURL:    ShortURL,
+			OriginalURL: el.OriginalURL,
+		}
+		jResBatch = append(jResBatch, row)
+	}
+
+	return jResBatch, nil
 }
 
 func (storage *DBStorage) Get(ShortURL string) (string, error) {
@@ -70,7 +100,7 @@ func (storage *DBStorage) Get(ShortURL string) (string, error) {
 
 	err := row.Scan(&OriginalURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to get original url: %s", err)
+		return "", NewStorageError("failed to select", OriginalURL, ShortURL, err)
 	}
 	return OriginalURL, nil
 }

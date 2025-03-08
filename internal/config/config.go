@@ -87,7 +87,6 @@ func LoadDefault() {
 	if AppConfig.StoragePath == "" {
 		AppConfig.StoragePath = "./tmp/data.txt"
 	}
-
 	//if AppConfig.DBConnection == "" {
 	//	AppConfig.DBConnection = "postgres://postgres:61278@localhost:5432/postgres"
 	//}
