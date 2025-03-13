@@ -3,9 +3,9 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
+	"shorter/internal/models"
 	"shorter/internal/urlkey"
 	"strconv"
 	"strings"
@@ -25,14 +25,10 @@ type FileStorage struct {
 }
 
 func NewFileStorage(filePath string) (*FileStorage, error) {
-	log.Printf("Using storage path: %s", filePath)
-
 	err := makeDirInPath(filePath)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Printf("Using full file storage path: %s", filePath)
 
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -42,14 +38,9 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	// Count existing lines (records)
 	count, err := countLines(filePath)
 	if err != nil {
-		fmt.Println("Warning: Failed to count lines:", err)
 		count = 0 // Default to 0 if an error occurs
 	}
-	if count > 0 {
-		log.Printf("The Storage file: %s exists and contains %d records", filePath, count)
-	} else {
-		log.Printf("The new Storage file: %s was created", filePath)
-	}
+
 	// Close the file if an error occurs
 	defer func() {
 		if err != nil {
@@ -65,47 +56,71 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	}, nil
 }
 
-func (f *FileStorage) Set(url string) string {
-	key := urlkey.GenerateSlug(url)
-	if key == "" {
-		return ""
+func (f *FileStorage) Set(OriginalURL string) (string, error) {
+	urlKey := urlkey.GenerateSlug(OriginalURL)
+	if urlKey == "" {
+		return "", fmt.Errorf("shortURL is empty")
 	}
+	//Check for duplications
+	if storedURL, _ := f.Get(urlKey); storedURL != "" {
+		err := fmt.Errorf("the URL: %s is already stored in the file", storedURL)
+		return urlKey, NewStorageError("already exists", storedURL, urlKey, err)
+	}
+
 	rowID := strconv.Itoa(f.counter + 1)
 
 	row := Row{
 		ID:          rowID,
-		ShortURL:    key,
-		OriginalURL: url,
+		ShortURL:    urlKey,
+		OriginalURL: OriginalURL,
 	}
 	// Write JSON entry
 	err := f.encoder.Encode(row)
 	if err != nil {
-		fmt.Println("Failed to write to file:", err)
-		return ""
+		return "", fmt.Errorf("failed to write to file: %s", err)
 	}
-	//Increase the counter
 	f.counter++
-
-	return key
+	return urlKey, nil
 }
 
-func (f *FileStorage) Get(key string) string {
-	key = strings.ToLower(key)
+func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
+	jResBatch := make([]models.JSONRes, len(jReqBatch))
+
+	for _, el := range jReqBatch {
+		ShortURL, err := f.Set(el.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+
+		row := models.JSONRes{
+			CorrID:      el.CorrID,
+			ShortURL:    ShortURL,
+			OriginalURL: el.OriginalURL,
+		}
+		jResBatch = append(jResBatch, row)
+	}
+	return jResBatch, nil
+}
+
+func (f *FileStorage) Get(ShortURL string) (string, error) {
+	ShortURL = strings.ToLower(ShortURL)
+	if ShortURL == "" {
+		return "", fmt.Errorf("shortURL is empty")
+	}
 
 	data, err := os.ReadFile(f.filePath)
 	if err != nil {
-		fmt.Println("Failed to read file:", err)
-		return ""
+		return "", fmt.Errorf("failed to read file: %s", err)
 	}
 	// Search for the short URL
 	for _, line := range splitLines(string(data)) {
 		var row Row
 		err := json.Unmarshal([]byte(line), &row)
-		if err == nil && row.ShortURL == key {
-			return row.OriginalURL
+		if err == nil && row.ShortURL == ShortURL {
+			return row.OriginalURL, nil
 		}
 	}
-	return ""
+	return "", fmt.Errorf("failed to find OriginalURL by ShortURL: %s", ShortURL)
 }
 
 // Close the file when FileStorage is no longer needed
@@ -114,6 +129,10 @@ func (f *FileStorage) Close() error {
 		return f.file.Close()
 	}
 	return nil
+}
+
+func (f *FileStorage) IsAvailable() bool {
+	return f.file != nil
 }
 
 // makeDirInPath - creates directories to store the file
@@ -145,7 +164,6 @@ func splitLines(data string) []string {
 			start = i + 1
 		}
 	}
-
 	//Get the last line in the file if it doesn't have \n
 	if start < len(data) {
 		lines = append(lines, data[start:])

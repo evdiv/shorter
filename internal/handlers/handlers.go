@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"shorter/internal/config"
+	"shorter/internal/models"
 	"shorter/internal/storage"
 	"shorter/internal/urlkey"
 )
@@ -13,14 +15,6 @@ import (
 // Handlers struct holds dependencies (storage)
 type Handlers struct {
 	Storage storage.Storer
-}
-
-type JSONReq struct {
-	URL string `json:"url"`
-}
-
-type JSONRes struct {
-	Result string `json:"result"`
 }
 
 // NewHandlers initializes handlers with storage
@@ -45,16 +39,25 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	urlKey := h.Storage.Set(originalURL)
+	urlKey, err := h.Storage.Set(originalURL)
+	HeaderStatus := http.StatusCreated
 
-	res.WriteHeader(http.StatusCreated)
+	if err != nil {
+		var storageErr *storage.StorageError
+		if errors.As(err, &storageErr) && storageErr.Type == "already exists" {
+			HeaderStatus = http.StatusConflict
+		} else {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	res.WriteHeader(HeaderStatus)
 	res.Write([]byte(config.AppConfig.ResultHost + "/" + urlKey))
 }
 
 func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
-	var jReq JSONReq
-	var jRes JSONRes
-
+	var jReq models.JSONReq
+	var jRes models.JSONRes
 	if err := json.NewDecoder(req.Body).Decode(&jReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -62,11 +65,22 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 
 	if _, valid := urlkey.IsValidURL(jReq.URL); !valid {
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("The body should contain a valid URL"))
+		res.Write([]byte("The incoming JSON string should contain a valid URL"))
 		return
 	}
 
-	urlKey := h.Storage.Set(jReq.URL)
+	urlKey, err := h.Storage.Set(jReq.URL)
+	HeaderStatus := http.StatusCreated
+
+	if err != nil {
+		var storageErr *storage.StorageError
+		if errors.As(err, &storageErr) && storageErr.Type == "already exists" {
+			HeaderStatus = http.StatusConflict
+		} else {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	jRes.Result = config.AppConfig.ResultHost + "/" + urlKey
 
 	out, err := json.Marshal(jRes)
@@ -76,8 +90,8 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(out))
+	res.WriteHeader(HeaderStatus)
+	res.Write(out)
 }
 
 func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
@@ -89,15 +103,50 @@ func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalURL := h.Storage.Get(urlKey)
+	originalURL, err := h.Storage.Get(urlKey)
 
-	if originalURL == "" {
+	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("URL is not found"))
+		res.Write([]byte(err.Error()))
 		return
 	}
 
 	// Set the Location header and return a 307 Temporary Redirect
 	res.Header().Set("Location", originalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (h *Handlers) IsAvailable(res http.ResponseWriter, req *http.Request) {
+	if h.Storage.IsAvailable() {
+		res.WriteHeader(http.StatusOK)
+	}
+	res.WriteHeader(http.StatusInternalServerError)
+}
+
+// ShortenBatchURL - inserts batch records in storage
+func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
+	jReqBatch := []models.JSONReq{}
+
+	if err := json.NewDecoder(req.Body).Decode(&jReqBatch); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer req.Body.Close()
+
+	jResBatch, err := h.Storage.SetBatch(jReqBatch)
+
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	out, err := json.Marshal(jResBatch)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	res.Write([]byte(out))
 }
