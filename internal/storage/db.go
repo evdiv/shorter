@@ -7,6 +7,7 @@ import (
 	"shorter/internal/config"
 	"shorter/internal/models"
 	"shorter/internal/urlkey"
+	"time"
 )
 
 type DBStorage struct {
@@ -19,6 +20,12 @@ func NewDBStorage(connection string) (*DBStorage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %s", connection)
 	}
+
+	// Set connection pool settings
+	db.SetMaxOpenConns(25)                 // Allow up to 25 open connections
+	db.SetMaxIdleConns(5)                  // Keep up to 5 idle connections
+	db.SetConnMaxLifetime(5 * time.Minute) // Recreate connections every 5 minutes
+
 	return &DBStorage{
 		connection: connection,
 		db:         db,

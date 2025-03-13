@@ -127,6 +127,17 @@ func TestRouter(t *testing.T) {
 				body:   `{"result":"` + config.AppConfig.ResultHost + `/921c"}`,
 			},
 		},
+		{
+			name:   "POST: Positive. Adding batch URLs",
+			target: "/api/shorten/batch",
+			method: "POST",
+			body:   `[{"correlation_id":"ddd", "original_url":"https://ddd.ru"}]`,
+			want: want{
+				code:   201,
+				header: "",
+				body:   `[{"correlation_id":"aaa", "short_url":"http://localhost:8080/247e"}]`,
+			},
+		},
 	}
 
 	router := setupRouter()
