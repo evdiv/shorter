@@ -34,11 +34,7 @@ func NewDBStorage(connection string) (*DBStorage, error) {
 
 // Migrate - creates the tables if they don't exist
 func (storage *DBStorage) Migrate() error {
-	_, err := storage.db.Exec(`CREATE TABLE IF NOT EXISTS Links 
-		(ID SERIAL PRIMARY KEY, CorrelationID VARCHAR(128) NULL,
-    	ShortURL VARCHAR(128) NOT NULL,
-    	OriginalURL VARCHAR(512) NOT NULL UNIQUE,
-    	AddedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`)
+	_, err := storage.db.Exec(createTableQuery)
 	if err != nil {
 		return fmt.Errorf("failed to create migration table: %s", err)
 	}
@@ -56,10 +52,7 @@ func (storage *DBStorage) Set(OriginalURL string) (string, error) {
 		return "", fmt.Errorf("the short url is empty")
 	}
 
-	result, err := storage.db.Exec(`INSERT INTO Links (ShortURL, OriginalURL) 
-											VALUES ($1, $2) 
-											ON CONFLICT (OriginalURL)
-											DO NOTHING`, urlKey, OriginalURL)
+	result, err := storage.db.Exec(insertLinkQuery, urlKey, OriginalURL)
 	if err != nil {
 		return "", NewStorageError("failed to insert", OriginalURL, urlKey, err)
 	}
@@ -76,7 +69,7 @@ func (storage *DBStorage) Set(OriginalURL string) (string, error) {
 func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
 	jResBatch := []models.JSONRes{}
 
-	stmt, err := storage.db.Prepare(`INSERT INTO Links (ShortURL, OriginalURL) VALUES ($1, $2)`)
+	stmt, err := storage.db.Prepare(insertLinkQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare statement: %s", err)
 	}
@@ -104,7 +97,7 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes
 
 func (storage *DBStorage) Get(ShortURL string) (string, error) {
 	var OriginalURL string
-	row := storage.db.QueryRow("SELECT OriginalURL FROM Links WHERE ShortURL = $1", ShortURL)
+	row := storage.db.QueryRow(selectOriginalURLQuery, ShortURL)
 
 	err := row.Scan(&OriginalURL)
 	if err != nil {
