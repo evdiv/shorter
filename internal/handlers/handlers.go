@@ -22,6 +22,14 @@ func NewHandlers(s storage.Storer) *Handlers {
 	return &Handlers{Storage: s}
 }
 
+func getUserIDFromContext(req *http.Request) (string, error) {
+	userID, ok := req.Context().Value("userID").(string)
+	if !ok {
+		return "", errors.New("userID not found in context")
+	}
+	return userID, nil
+}
+
 func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -39,7 +47,9 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	urlKey, err := h.Storage.Set(originalURL)
+	userID, _ := getUserIDFromContext(req)
+
+	urlKey, err := h.Storage.Set(originalURL, userID)
 	HeaderStatus := http.StatusCreated
 
 	if err != nil {
@@ -68,8 +78,9 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 		res.Write([]byte("The incoming JSON string should contain a valid URL"))
 		return
 	}
+	userID, _ := getUserIDFromContext(req)
 
-	urlKey, err := h.Storage.Set(jReq.URL)
+	urlKey, err := h.Storage.Set(jReq.URL, userID)
 	HeaderStatus := http.StatusCreated
 
 	if err != nil {
@@ -92,6 +103,30 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(HeaderStatus)
 	res.Write(out)
+}
+
+func (h *Handlers) GetUserURL(res http.ResponseWriter, req *http.Request) {
+
+	userID, err := getUserIDFromContext(req)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	jResBatch, err := h.Storage.GetUserURLs(userID)
+	if err != nil {
+		http.Error(res, "No content", http.StatusNoContent)
+		return
+	}
+
+	out, err := json.Marshal(jResBatch)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	res.Write([]byte(out))
 }
 
 func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
@@ -133,7 +168,8 @@ func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 
-	jResBatch, err := h.Storage.SetBatch(jReqBatch)
+	userID, _ := getUserIDFromContext(req)
+	jResBatch, err := h.Storage.SetBatch(jReqBatch, userID)
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

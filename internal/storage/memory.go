@@ -8,33 +8,33 @@ import (
 )
 
 type MemoryStorage struct {
-	data map[string]string
+	data map[string][]string
 }
 
 // NewMemoryStorage - constructor to create a new MemoryStorage
 func NewMemoryStorage() *MemoryStorage {
-	return &MemoryStorage{data: make(map[string]string)}
+	return &MemoryStorage{data: make(map[string][]string)}
 }
 
 // Set - stores a url into the memory storage
-func (m *MemoryStorage) Set(OriginalURL string) (string, error) {
+func (m *MemoryStorage) Set(OriginalURL string, userID string) (string, error) {
 	urlKey := urlkey.GenerateSlug(OriginalURL)
 	if urlKey == "" {
 		return "", fmt.Errorf("ShortURL is empty")
 	}
-	if m.data[urlKey] != "" {
+	if m.data[urlKey][0] != "" {
 		err := fmt.Errorf("the URL: %s is already stored in the memory", m.data[urlKey])
 		return urlKey, NewStorageError("already exists", OriginalURL, urlKey, err)
 	}
-	m.data[urlKey] = OriginalURL
+	m.data[urlKey] = []string{OriginalURL, userID}
 	return urlKey, nil
 }
 
-func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
+func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
 	jResBatch := make([]models.JSONRes, len(jReqBatch))
 
 	for _, el := range jReqBatch {
-		ShortURL, err := m.Set(el.OriginalURL)
+		ShortURL, err := m.Set(el.OriginalURL, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -52,12 +52,28 @@ func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, 
 // Get - retrieves a value from memory
 func (m *MemoryStorage) Get(ShortURL string) (string, error) {
 	ShortURL = strings.ToLower(ShortURL)
-	OriginalURL := m.data[ShortURL]
+	OriginalURL := m.data[ShortURL][0]
 
 	if OriginalURL == "" {
 		return "", fmt.Errorf("OriginalURL is empty")
 	}
 	return OriginalURL, nil
+}
+
+func (m *MemoryStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
+	jResBatch := make([]models.JSONUserRes, 0)
+
+	for key, el := range m.data {
+		if el[1] != userID {
+			continue
+		}
+		row := models.JSONUserRes{
+			ShortURL:    key,
+			OriginalURL: el[0],
+		}
+		jResBatch = append(jResBatch, row)
+	}
+	return jResBatch, nil
 }
 
 func (m *MemoryStorage) IsAvailable() bool {

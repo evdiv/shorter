@@ -34,7 +34,17 @@ func NewDBStorage(connection string) (*DBStorage, error) {
 
 // Migrate - creates the tables if they don't exist
 func (storage *DBStorage) Migrate() error {
-	_, err := storage.db.Exec(createTableQuery)
+
+	query := `CREATE TABLE IF NOT EXISTS Links (
+        ID SERIAL PRIMARY KEY,
+        UserID VARCHAR(128) NULL,
+        CorrelationID VARCHAR(128) NULL,
+        ShortURL VARCHAR(128) NOT NULL,
+        OriginalURL VARCHAR(512) NOT NULL UNIQUE,
+        AddedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+
+	_, err := storage.db.Exec(query)
 	if err != nil {
 		return fmt.Errorf("failed to create migration table: %s", err)
 	}
@@ -46,13 +56,23 @@ func (storage *DBStorage) IsAvailable() bool {
 	return err == nil
 }
 
-func (storage *DBStorage) Set(OriginalURL string) (string, error) {
+func (storage *DBStorage) Set(OriginalURL string, userID string) (string, error) {
+
+	query := `INSERT INTO Links (ShortURL, OriginalURL, UserID)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (OriginalURL)
+		DO NOTHING`
+
 	urlKey := urlkey.GenerateSlug(OriginalURL)
 	if urlKey == "" {
 		return "", fmt.Errorf("the short url is empty")
 	}
 
-	result, err := storage.db.Exec(insertLinkQuery, urlKey, OriginalURL)
+	fmt.Printf("urlKey: %s\n", urlKey)
+	fmt.Printf("OriginalURL: %s\n", OriginalURL)
+	fmt.Printf("UserID: %s\n", userID)
+
+	result, err := storage.db.Exec(query, urlKey, OriginalURL, userID)
 	if err != nil {
 		return "", NewStorageError("failed to insert", OriginalURL, urlKey, err)
 	}
@@ -66,10 +86,16 @@ func (storage *DBStorage) Set(OriginalURL string) (string, error) {
 	return urlKey, nil
 }
 
-func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
+func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
+
+	query := `INSERT INTO Links (ShortURL, OriginalURL, UserID)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (OriginalURL)
+		DO NOTHING`
+
 	jResBatch := []models.JSONRes{}
 
-	stmt, err := storage.db.Prepare(insertLinkQuery)
+	stmt, err := storage.db.Prepare(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare statement: %s", err)
 	}
@@ -80,7 +106,7 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes
 		if urlKey == "" {
 			return nil, fmt.Errorf("the urlKey for Original Url: %s is empty", el.OriginalURL)
 		}
-		_, err := stmt.Exec(urlKey, el.OriginalURL)
+		_, err := stmt.Exec(urlKey, el.OriginalURL, userID)
 		if err != nil {
 			return nil, NewStorageError("failed to insert", urlKey, el.OriginalURL, err)
 		}
@@ -96,14 +122,39 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes
 }
 
 func (storage *DBStorage) Get(ShortURL string) (string, error) {
+	query := `SELECT OriginalURL FROM Links WHERE ShortURL = $1`
+
 	var OriginalURL string
-	row := storage.db.QueryRow(selectOriginalURLQuery, ShortURL)
+	row := storage.db.QueryRow(query, ShortURL)
 
 	err := row.Scan(&OriginalURL)
 	if err != nil {
 		return "", NewStorageError("failed to select", OriginalURL, ShortURL, err)
 	}
 	return OriginalURL, nil
+}
+
+func (storage *DBStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
+	jResBatch := make([]models.JSONUserRes, 0)
+
+	query := `SELECT ShortURL, OriginalURL FROM Links WHERE UserID = $1`
+	rows, err := storage.db.Query(query, userID)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve links for user: %s", userID)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var row models.JSONUserRes
+
+		if err := rows.Scan(&row.ShortURL, &row.OriginalURL); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %s", err)
+		}
+		row.ShortURL = config.AppConfig.ResultHost + "/" + row.ShortURL
+		jResBatch = append(jResBatch, row)
+	}
+	return jResBatch, nil
 }
 
 func (storage *DBStorage) Close() error {
