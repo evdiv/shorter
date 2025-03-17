@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
+	"log"
 	"net/http"
 	"time"
 )
@@ -25,7 +26,7 @@ const SecretKey = "supersecretkey"
 func WithAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authRequired := false
-		if r.RequestURI == "/api/user/urls" {
+		if r.RequestURI == "/api/user/urls" && r.Method == "GET" {
 			authRequired = true
 		}
 
@@ -54,6 +55,8 @@ func WithAuth(next http.Handler) http.Handler {
 				Path:  "/",
 			})
 		}
+
+		log.Println("WithAuth. userID: ", userID)
 
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))

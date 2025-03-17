@@ -30,10 +30,15 @@ func getUserIDFromContext(req *http.Request) (string, error) {
 		return "", errors.New("userID not found in context")
 	}
 
+	log.Println("getUserIDFromContext. Should be userID: ", userID)
+
 	return userID, nil
 }
 
 func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
+
+	log.Println("In the PostURL handler.")
+
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
@@ -52,7 +57,12 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 
 	userID, _ := getUserIDFromContext(req)
 
+	log.Println("PostURL. Original URL: ", originalURL)
+	log.Println("PostURL. userID: ", userID)
+
 	urlKey, err := h.Storage.Set(originalURL, userID)
+	log.Println("PostURL. urlKey: ", urlKey)
+
 	HeaderStatus := http.StatusCreated
 
 	if err != nil {
