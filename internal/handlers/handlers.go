@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"shorter/internal/config"
+	"shorter/internal/middleware"
 	"shorter/internal/models"
 	"shorter/internal/storage"
 	"shorter/internal/urlkey"
@@ -23,10 +24,11 @@ func NewHandlers(s storage.Storer) *Handlers {
 }
 
 func getUserIDFromContext(req *http.Request) (string, error) {
-	userID, ok := req.Context().Value("userID").(string)
+	userID, ok := req.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
 		return "", errors.New("userID not found in context")
 	}
+
 	return userID, nil
 }
 

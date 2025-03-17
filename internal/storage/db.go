@@ -154,6 +154,12 @@ func (storage *DBStorage) GetUserURLs(userID string) ([]models.JSONUserRes, erro
 		row.ShortURL = config.AppConfig.ResultHost + "/" + row.ShortURL
 		jResBatch = append(jResBatch, row)
 	}
+
+	// **Check for errors during iteration**
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+	}
+
 	return jResBatch, nil
 }
 

@@ -58,6 +58,7 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 }
 
 func (f *FileStorage) Set(OriginalURL string, userID string) (string, error) {
+
 	urlKey := urlkey.GenerateSlug(OriginalURL)
 	if urlKey == "" {
 		return "", fmt.Errorf("shortURL is empty")
@@ -76,6 +77,7 @@ func (f *FileStorage) Set(OriginalURL string, userID string) (string, error) {
 		ShortURL:    urlKey,
 		OriginalURL: OriginalURL,
 	}
+
 	// Write JSON entry
 	err := f.encoder.Encode(row)
 	if err != nil {
