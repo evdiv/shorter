@@ -126,6 +126,11 @@ func (h *Handlers) GetUserURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if len(jResBatch) == 0 {
+		http.Error(res, "No content", http.StatusNoContent)
+		return
+	}
+
 	out, err := json.Marshal(jResBatch)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
