@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"io"
+	"log"
 	"net/http"
 	"shorter/internal/config"
 	"shorter/internal/middleware"
@@ -81,6 +82,7 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	userID, _ := getUserIDFromContext(req)
+	log.Println("In the ShortenURL handler. UserID: " + userID)
 
 	urlKey, err := h.Storage.Set(jReq.URL, userID)
 	HeaderStatus := http.StatusCreated
@@ -110,6 +112,9 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 func (h *Handlers) GetUserURL(res http.ResponseWriter, req *http.Request) {
 
 	userID, err := getUserIDFromContext(req)
+
+	log.Println("in the GetUserURL. UserID: " + userID)
+
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return

@@ -1,3 +1,5 @@
 
 {"uuid":"2","short_url":"2a1f","original_url":"https://aaaa.ru","userid":"0694b418fc7ee1886eda251132950d8d"}
 {"uuid":"3","short_url":"2a49","original_url":"https://bbbb.ru","userid":"0694b418fc7ee1886eda251132950d8d"}
+{"uuid":"4","short_url":"921c","original_url":"https://practicum.yandex.ru","userid":"0694b418fc7ee1886eda251132950d8d"}
+{"uuid":"5","short_url":"3985","original_url":"https://yandex.ru","userid":"0694b418fc7ee1886eda251132950d8d"}

@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"shorter/internal/models"
@@ -130,6 +131,8 @@ func (f *FileStorage) Get(ShortURL string) (string, error) {
 func (f *FileStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
 	jResBatch := make([]models.JSONUserRes, 0)
 
+	log.Println("GetUserURLs from a file.")
+
 	data, err := os.ReadFile(f.filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %s", err)
@@ -145,6 +148,8 @@ func (f *FileStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
 				ShortURL:    row.ShortURL,
 				OriginalURL: row.OriginalURL,
 			}
+
+			log.Println("Appending a row.")
 			jResBatch = append(jResBatch, row)
 		}
 	}
