@@ -10,7 +10,8 @@ func TestMemoryStorage_Set(t *testing.T) {
 	storage := NewMemoryStorage()
 
 	originalURL := "https://practicum.yandex.ru/"
-	key, _ := storage.Set(originalURL)
+	userID := "111222333abc"
+	key, _ := storage.Set(originalURL, userID)
 	assert.NotEmpty(t, key, "Expected a non-empty key, got an empty string")
 
 	retrievedURL, _ := storage.Get(key)

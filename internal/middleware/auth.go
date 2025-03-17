@@ -27,6 +27,7 @@ func WithAuth(next http.Handler) http.Handler {
 		}
 
 		token, err := getJWTFromCookie(r)
+
 		if authRequired && err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

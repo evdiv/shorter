@@ -22,7 +22,9 @@ func (m *MemoryStorage) Set(OriginalURL string, userID string) (string, error) {
 	if urlKey == "" {
 		return "", fmt.Errorf("ShortURL is empty")
 	}
-	if m.data[urlKey][0] != "" {
+	existing, found := m.data[urlKey]
+
+	if found && existing[0] != "" {
 		err := fmt.Errorf("the URL: %s is already stored in the memory", m.data[urlKey])
 		return urlKey, NewStorageError("already exists", OriginalURL, urlKey, err)
 	}
@@ -50,14 +52,14 @@ func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]m
 }
 
 // Get - retrieves a value from memory
-func (m *MemoryStorage) Get(ShortURL string) (string, error) {
-	ShortURL = strings.ToLower(ShortURL)
-	OriginalURL := m.data[ShortURL][0]
+func (m *MemoryStorage) Get(urlKey string) (string, error) {
+	urlKey = strings.ToLower(urlKey)
 
-	if OriginalURL == "" {
+	existing, found := m.data[urlKey]
+	if !found || existing[0] == "" {
 		return "", fmt.Errorf("OriginalURL is empty")
 	}
-	return OriginalURL, nil
+	return existing[0], nil
 }
 
 func (m *MemoryStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
