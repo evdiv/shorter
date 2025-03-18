@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -18,54 +19,49 @@ type Claims struct {
 
 type contextKey string
 
-const UserIDKey contextKey = "userID"
-const TokenExp = time.Hour * 3
-const SecretKey = "supersecretkey"
+const (
+	UserIDKey  contextKey = "userID"
+	TokenExp              = time.Hour * 3
+	SecretKey             = "supersecretkey"
+	CookieName            = "jwt"
+)
 
 func WithAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authRequired := false
-		if r.RequestURI == "/api/user/urls" && r.Method == "GET" {
-			authRequired = true
-		}
+		authRequired := r.RequestURI == "/api/user/urls" && r.Method == "GET"
 
-		// If no JWT in the Cookie return 401 / Unauthorized
 		token := getJWTFromCookie(r)
-		if authRequired && token == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		//if no created links return 204 / No Content
 		userID, err := getUserID(token)
 
 		if err != nil {
 			userID = generateUserID()
 			token = buildJWTString(userID)
 
-			log.Println("Trying to create a token")
+			log.Println("Generated new userID and JWT")
 
-			if token == "" {
-				http.Error(w, "Failed to generate JWT", http.StatusInternalServerError)
-				return
-			}
+			// Set new JWT in cookie
+			http.SetCookie(w, &http.Cookie{
+				Name:    CookieName,
+				Value:   token,
+				Path:    "/",
+				Expires: time.Now().Add(TokenExp),
+			})
 		}
 
-		log.Println("get userID from token. userID: ", userID)
+		// If authentication is required and there's still no valid user ID, return 401
+		if authRequired && userID == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:  "jwt",
-			Value: token,
-			Path:  "/",
-		})
-
+		// Add user ID to context
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func getJWTFromCookie(r *http.Request) string {
-	cookie, err := r.Cookie("jwt")
+	cookie, err := r.Cookie(CookieName)
 	if err != nil {
 		return ""
 	}
@@ -93,10 +89,8 @@ func getUserID(tokenString string) (string, error) {
 			return []byte(SecretKey), nil
 		})
 
-	if err != nil {
-		return "", err
-	}
-	if !token.Valid {
+	if err != nil || !token.Valid {
+		fmt.Println("Invalid token: ", err)
 		return "", errors.New("invalid token")
 	}
 	return claims.UserID, nil
@@ -104,12 +98,16 @@ func getUserID(tokenString string) (string, error) {
 
 func generateUserID() string {
 	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
 	return hex.EncodeToString(b)
 }
 
 // BuildJWTString - creates JWT token
 func buildJWTString(userID string) string {
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
