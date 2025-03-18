@@ -7,8 +7,9 @@ import (
 )
 
 type Storer interface {
-	Set(url string) (string, error)
-	SetBatch(entries []models.JSONReq) ([]models.JSONRes, error)
+	Set(url string, userID string) (string, error)
+	SetBatch(entries []models.JSONReq, userID string) ([]models.JSONRes, error)
+	GetUserURLs(userID string) ([]models.JSONUserRes, error)
 	Get(key string) (string, error)
 	IsAvailable() bool
 	Close() error
