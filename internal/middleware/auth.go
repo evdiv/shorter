@@ -43,7 +43,11 @@ func WithAuth(next http.Handler) http.Handler {
 		}
 
 		if userID == "" {
-			userID, _ := generateUserID()
+			userID, err = generateUserID()
+			if err != nil {
+				http.Error(w, "Failed to generate UserID", http.StatusInternalServerError)
+				return
+			}
 			token, err = buildJWTString(userID)
 			if err != nil {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -77,6 +81,11 @@ func getJWTFromCookie(r *http.Request) (string, error) {
 }
 
 func getUserID(tokenString string) (string, error) {
+	if tokenString == "" {
+		log.Println("getUserID: Token is empty")
+		return "", errors.New("token is empty")
+	}
+
 	claims := &Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims,
