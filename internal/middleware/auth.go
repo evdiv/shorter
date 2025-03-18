@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -30,54 +29,52 @@ func WithAuth(next http.Handler) http.Handler {
 			authRequired = true
 		}
 
-		token, err := getJWTFromCookie(r)
-
-		if authRequired && err != nil {
+		// If no JWT in the Cookie return 401 / Unauthorized
+		token := getJWTFromCookie(r)
+		if authRequired && token == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+
+		//if no created links return 204 / No Content
 		userID, err := getUserID(token)
-		if authRequired && err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
 
-		if userID == "" {
-			userID, err = generateUserID()
-			if err != nil {
-				http.Error(w, "Failed to generate UserID", http.StatusInternalServerError)
+		if err != nil {
+			userID = generateUserID()
+			token = buildJWTString(userID)
+
+			log.Println("Trying to create a token")
+
+			if token == "" {
+				http.Error(w, "Failed to generate JWT", http.StatusInternalServerError)
 				return
 			}
-			token, err = buildJWTString(userID)
-			if err != nil {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-			http.SetCookie(w, &http.Cookie{
-				Name:  "jwt",
-				Value: token,
-				Path:  "/",
-			})
 		}
 
-		log.Println("WithAuth. userID: ", userID)
+		log.Println("get userID from token. userID: ", userID)
+
+		http.SetCookie(w, &http.Cookie{
+			Name:  "jwt",
+			Value: token,
+			Path:  "/",
+		})
 
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func getJWTFromCookie(r *http.Request) (string, error) {
+func getJWTFromCookie(r *http.Request) string {
 	cookie, err := r.Cookie("jwt")
 	if err != nil {
-		return "", err
+		return ""
 	}
 
 	if cookie == nil || cookie.Value == "" {
-		return "", errors.New("cookie is empty")
+		return ""
 	}
 
-	return cookie.Value, nil
+	return cookie.Value
 }
 
 func getUserID(tokenString string) (string, error) {
@@ -105,17 +102,13 @@ func getUserID(tokenString string) (string, error) {
 	return claims.UserID, nil
 }
 
-func generateUserID() (string, error) {
+func generateUserID() string {
 	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
+	return hex.EncodeToString(b)
 }
 
 // BuildJWTString - creates JWT token
-func buildJWTString(userID string) (string, error) {
+func buildJWTString(userID string) string {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -126,7 +119,7 @@ func buildJWTString(userID string) (string, error) {
 
 	tokenString, err := token.SignedString([]byte(SecretKey))
 	if err != nil {
-		return "", err
+		return ""
 	}
-	return tokenString, nil
+	return tokenString
 }
