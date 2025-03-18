@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"io"
-	"log"
 	"net/http"
 	"shorter/internal/config"
 	"shorter/internal/middleware"
@@ -30,14 +29,10 @@ func getUserIDFromContext(req *http.Request) (string, error) {
 		return "", errors.New("userID not found in context")
 	}
 
-	log.Println("getUserIDFromContext. Should be userID: ", userID)
-
 	return userID, nil
 }
 
 func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
-
-	log.Println("In the PostURL handler.")
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -56,12 +51,7 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	userID, _ := getUserIDFromContext(req)
-
-	log.Println("PostURL. Original URL: ", originalURL)
-	log.Println("PostURL. userID: ", userID)
-
 	urlKey, err := h.Storage.Set(originalURL, userID)
-	log.Println("PostURL. urlKey: ", urlKey)
 
 	HeaderStatus := http.StatusCreated
 
@@ -92,7 +82,6 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	userID, _ := getUserIDFromContext(req)
-	log.Println("In the ShortenURL handler. UserID: " + userID)
 
 	urlKey, err := h.Storage.Set(jReq.URL, userID)
 	HeaderStatus := http.StatusCreated
@@ -122,8 +111,6 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 func (h *Handlers) GetUserURL(res http.ResponseWriter, req *http.Request) {
 
 	userID, err := getUserIDFromContext(req)
-
-	log.Println("in the GetUserURL. UserID: " + userID)
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusUnauthorized)

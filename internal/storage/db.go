@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"log"
 	"shorter/internal/config"
 	"shorter/internal/models"
 	"shorter/internal/urlkey"
@@ -138,8 +137,6 @@ func (storage *DBStorage) Get(ShortURL string) (string, error) {
 func (storage *DBStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
 	jResBatch := make([]models.JSONUserRes, 0)
 
-	log.Println("GetUserURLs from a database.")
-
 	query := `SELECT ShortURL, OriginalURL FROM Links WHERE UserID = $1`
 	rows, err := storage.db.Query(query, userID)
 
@@ -155,9 +152,6 @@ func (storage *DBStorage) GetUserURLs(userID string) ([]models.JSONUserRes, erro
 			return nil, fmt.Errorf("failed to scan row: %s", err)
 		}
 		row.ShortURL = config.AppConfig.ResultHost + "/" + row.ShortURL
-
-		log.Println("Before appending a row")
-
 		jResBatch = append(jResBatch, row)
 	}
 
@@ -165,7 +159,6 @@ func (storage *DBStorage) GetUserURLs(userID string) ([]models.JSONUserRes, erro
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error while iterating over rows: %w", err)
 	}
-
 	return jResBatch, nil
 }
 

@@ -37,8 +37,6 @@ func WithAuth(next http.Handler) http.Handler {
 			userID = generateUserID()
 			token = buildJWTString(userID)
 
-			log.Println("Generated new userID and JWT")
-
 			// Set new JWT in cookie
 			http.SetCookie(w, &http.Cookie{
 				Name:    CookieName,
@@ -69,13 +67,11 @@ func getJWTFromCookie(r *http.Request) string {
 	if cookie == nil || cookie.Value == "" {
 		return ""
 	}
-
 	return cookie.Value
 }
 
 func getUserID(tokenString string) (string, error) {
 	if tokenString == "" {
-		log.Println("getUserID: Token is empty")
 		return "", errors.New("token is empty")
 	}
 
@@ -90,7 +86,6 @@ func getUserID(tokenString string) (string, error) {
 		})
 
 	if err != nil || !token.Valid {
-		fmt.Println("Invalid token: ", err)
 		return "", errors.New("invalid token")
 	}
 	return claims.UserID, nil
