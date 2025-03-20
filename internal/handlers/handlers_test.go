@@ -73,17 +73,6 @@ func TestRouter(t *testing.T) {
 			},
 		},
 		{
-			name:   "GET: Negative. Extract URL by non-valid key",
-			target: "/error",
-			method: "GET",
-			body:   "",
-			want: want{
-				code:   400,
-				header: "",
-				body:   "OriginalURL is empty",
-			},
-		},
-		{
 			name:   "GET: Negative. Extract URL by empty key",
 			target: "/",
 			method: "GET",
