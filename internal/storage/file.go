@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ type Row struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 	UserID      string `json:"userid"`
+	DeletedFlag bool   `json:"deleted"`
 }
 
 type FileStorage struct {
@@ -125,6 +127,63 @@ func (f *FileStorage) Get(ShortURL string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("failed to find OriginalURL by ShortURL: %s", ShortURL)
+}
+
+func (f *FileStorage) DeleteBatch(ShortURLs []string, userID string) (bool, error) {
+	if len(ShortURLs) == 0 {
+		return false, errors.New("no URLs provided for deletion")
+	}
+
+	// Read the file
+	data, err := os.ReadFile(f.filePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// Convert the file data into lines
+	lines := splitLines(string(data))
+	updatedLines := make([]string, 0, len(lines))
+	var updatedCount int
+
+	// Create a set for quick lookup of URLs to delete
+	urlSet := make(map[string]struct{}, len(ShortURLs))
+	for _, url := range ShortURLs {
+		urlSet[url] = struct{}{}
+	}
+
+	// Process each line
+	for _, line := range lines {
+		var row Row
+		if err := json.Unmarshal([]byte(line), &row); err != nil {
+			// Skip malformed JSON lines
+			updatedLines = append(updatedLines, line)
+			continue
+		}
+
+		// Check if the URL belongs to the user and should be deleted
+		if row.UserID == userID {
+			if _, exists := urlSet[row.ShortURL]; exists {
+				row.DeletedFlag = true
+				updatedCount++
+			}
+		}
+
+		// Convert back to JSON and store the updated record
+		updatedJSON, err := json.Marshal(row)
+		if err != nil {
+			return false, fmt.Errorf("failed to serialize updated record: %w", err)
+		}
+		updatedLines = append(updatedLines, string(updatedJSON))
+	}
+
+	// Write the updated data back to the file
+	err = os.WriteFile(f.filePath, []byte(strings.Join(updatedLines, "\n")), 0644)
+	if err != nil {
+		return false, fmt.Errorf("failed to write updated file: %w", err)
+	}
+
+	// Return true if at least one record was updated
+	return updatedCount > 0, nil
 }
 
 func (f *FileStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {

@@ -149,7 +149,6 @@ func TestRouter(t *testing.T) {
 			}
 			body := strings.TrimSpace(w.Body.String())
 			assert.Equal(t, tt.want.body, body)
-
 		})
 	}
 }

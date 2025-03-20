@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"shorter/internal/models"
 	"shorter/internal/urlkey"
@@ -60,6 +61,27 @@ func (m *MemoryStorage) Get(urlKey string) (string, error) {
 		return "", fmt.Errorf("OriginalURL is empty")
 	}
 	return existing[0], nil
+}
+
+func (m *MemoryStorage) DeleteBatch(ShortURLs []string, userID string) (bool, error) {
+	if len(ShortURLs) == 0 {
+		return false, errors.New("no URLs provided for deletion")
+	}
+
+	var updatedCount int
+
+	// Iterate over provided short URLs and mark them as deleted if the user owns them
+	for _, shortURL := range ShortURLs {
+		if entry, exists := m.data[shortURL]; exists {
+			if entry[1] == userID { // Check ownership
+				entry[2] = "deleted" // Mark URL as deleted
+				updatedCount++
+			}
+		}
+	}
+
+	// Return true if at least one URL was deleted
+	return updatedCount > 0, nil
 }
 
 func (m *MemoryStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {

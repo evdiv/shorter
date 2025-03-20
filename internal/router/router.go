@@ -25,5 +25,7 @@ func NewRouter(h *handlers.Handlers) http.Handler {
 	r.Get("/{urlKey}", h.GetURL)
 	r.Get("/", h.GetURL)
 
+	r.Delete("/api/user/urls", h.DeleteUserURL)
+
 	return r
 }
