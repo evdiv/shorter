@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -104,6 +105,13 @@ func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]mod
 		jResBatch = append(jResBatch, row)
 	}
 	return jResBatch, nil
+}
+
+func (f *FileStorage) DeleteBatch(keys []string, userID string) (bool, error) {
+	if len(keys) == 0 {
+		return false, errors.New("no URLs provided for deletion")
+	}
+	return false, nil
 }
 
 func (f *FileStorage) Get(ShortURL string) (string, error) {

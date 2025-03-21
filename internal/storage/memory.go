@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"shorter/internal/models"
 	"shorter/internal/urlkey"
@@ -49,6 +50,13 @@ func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]m
 		jResBatch = append(jResBatch, row)
 	}
 	return jResBatch, nil
+}
+
+func (m *MemoryStorage) DeleteBatch(keys []string, userID string) (bool, error) {
+	if len(keys) == 0 {
+		return false, errors.New("no URLs provided for deletion")
+	}
+	return false, nil
 }
 
 // Get - retrieves a value from memory

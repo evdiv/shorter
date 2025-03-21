@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"shorter/internal/config"
@@ -41,6 +42,7 @@ func (storage *DBStorage) Migrate() error {
         CorrelationID VARCHAR(128) NULL,
         ShortURL VARCHAR(128) NOT NULL,
         OriginalURL VARCHAR(512) NOT NULL UNIQUE,
+        DeletedFlag BOOLEAN NULL,
         AddedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`
 
@@ -121,15 +123,54 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([
 	return jResBatch, nil
 }
 
+func (storage *DBStorage) DeleteBatch(keys []string, userID string) (bool, error) {
+	if len(keys) == 0 {
+		return false, errors.New("no URLs provided for deletion")
+	}
+	query := `UPDATE Links SET DeletedFlag = true WHERE ShortURL = $1 AND UserID = $2`
+
+	stmt, err := storage.db.Prepare(query)
+	if err != nil {
+		return false, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	var updatedCount int64
+
+	for _, key := range keys {
+		result, err := stmt.Exec(key, userID)
+		if err != nil {
+			return false, fmt.Errorf("failed to update URL %s: %w", key, err)
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return false, fmt.Errorf("error retrieving affected rows for %s: %w", key, err)
+		}
+
+		if rowsAffected > 0 {
+			updatedCount++
+		}
+	}
+
+	// Return true if at least one URL was marked as deleted
+	return updatedCount > 0, nil
+}
+
 func (storage *DBStorage) Get(ShortURL string) (string, error) {
 	query := `SELECT OriginalURL FROM Links WHERE ShortURL = $1`
 
 	var OriginalURL string
+	var DeletedFlag bool
+
 	row := storage.db.QueryRow(query, ShortURL)
 
-	err := row.Scan(&OriginalURL)
+	err := row.Scan(&OriginalURL, &DeletedFlag)
 	if err != nil {
 		return "", NewStorageError("failed to select", OriginalURL, ShortURL, err)
+	}
+	if DeletedFlag {
+		return "", NewStorageError("deleted", OriginalURL, ShortURL, nil)
 	}
 	return OriginalURL, nil
 }
