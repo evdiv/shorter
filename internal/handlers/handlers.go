@@ -183,6 +183,7 @@ func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		var storageErr *storage.StorageError
+
 		if errors.As(err, &storageErr) && storageErr.Type == "deleted" {
 			res.WriteHeader(http.StatusGone)
 		} else {

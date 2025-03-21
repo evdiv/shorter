@@ -42,7 +42,7 @@ func (storage *DBStorage) Migrate() error {
         CorrelationID VARCHAR(128) NULL,
         ShortURL VARCHAR(128) NOT NULL,
         OriginalURL VARCHAR(512) NOT NULL UNIQUE,
-        DeletedFlag BOOLEAN NULL,
+        DeletedFlag BOOLEAN DEFAULT FALSE,
         AddedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`
 
@@ -158,14 +158,19 @@ func (storage *DBStorage) DeleteBatch(keys []string, userID string) (bool, error
 }
 
 func (storage *DBStorage) Get(ShortURL string) (string, error) {
-	query := `SELECT OriginalURL FROM Links WHERE ShortURL = $1`
+	query := `SELECT OriginalURL, DeletedFlag FROM Links WHERE ShortURL = $1`
 
 	var OriginalURL string
+	var DeletedFlag bool
+
 	row := storage.db.QueryRow(query, ShortURL)
 
-	err := row.Scan(&OriginalURL)
+	err := row.Scan(&OriginalURL, &DeletedFlag)
 	if err != nil {
 		return "", NewStorageError("failed to select", OriginalURL, ShortURL, err)
+	}
+	if DeletedFlag {
+		return "", NewStorageError("deleted", OriginalURL, ShortURL, nil)
 	}
 	return OriginalURL, nil
 }
