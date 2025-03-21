@@ -138,6 +138,38 @@ func (h *Handlers) GetUserURL(res http.ResponseWriter, req *http.Request) {
 	res.Write([]byte(out))
 }
 
+func (h *Handlers) DeleteUserURL(res http.ResponseWriter, req *http.Request) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("Unable to handle the request"))
+		return
+	}
+	defer req.Body.Close()
+
+	// Parse JSON request body into a slice of strings
+	var keys []string
+	err = json.Unmarshal(body, &keys)
+	if err != nil {
+		http.Error(res, "Invalid JSON format", http.StatusBadRequest)
+		return
+	}
+
+	userID, _ := getUserIDFromContext(req)
+	deleted, err := h.Storage.DeleteBatch(keys, userID)
+
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if deleted {
+		res.WriteHeader(http.StatusAccepted)
+	} else {
+		res.WriteHeader(http.StatusNotFound)
+	}
+}
+
 func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 	urlKey := chi.URLParam(req, "urlKey")
 
@@ -150,7 +182,13 @@ func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 	originalURL, err := h.Storage.Get(urlKey)
 
 	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
+		var storageErr *storage.StorageError
+		if errors.As(err, &storageErr) && storageErr.Type == "deleted" {
+			res.WriteHeader(http.StatusGone)
+		} else {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			res.WriteHeader(http.StatusBadRequest)
+		}
 		res.Write([]byte(err.Error()))
 		return
 	}

@@ -17,6 +17,7 @@ type Row struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 	UserID      string `json:"userid"`
+	DeletedFlag bool   `json:"deleted"`
 }
 
 type FileStorage struct {

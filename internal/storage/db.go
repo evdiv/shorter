@@ -161,16 +161,11 @@ func (storage *DBStorage) Get(ShortURL string) (string, error) {
 	query := `SELECT OriginalURL FROM Links WHERE ShortURL = $1`
 
 	var OriginalURL string
-	var DeletedFlag bool
-
 	row := storage.db.QueryRow(query, ShortURL)
 
-	err := row.Scan(&OriginalURL, &DeletedFlag)
+	err := row.Scan(&OriginalURL)
 	if err != nil {
 		return "", NewStorageError("failed to select", OriginalURL, ShortURL, err)
-	}
-	if DeletedFlag {
-		return "", NewStorageError("deleted", OriginalURL, ShortURL, nil)
 	}
 	return OriginalURL, nil
 }
