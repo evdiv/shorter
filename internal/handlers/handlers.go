@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"shorter/internal/config"
+	"shorter/internal/middleware"
 	"shorter/internal/models"
 	"shorter/internal/storage"
 	"shorter/internal/urlkey"
@@ -22,7 +23,17 @@ func NewHandlers(s storage.Storer) *Handlers {
 	return &Handlers{Storage: s}
 }
 
+func getUserIDFromContext(req *http.Request) (string, error) {
+	userID, ok := req.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		return "", errors.New("userID not found in context")
+	}
+
+	return userID, nil
+}
+
 func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
+
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
@@ -39,7 +50,9 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	urlKey, err := h.Storage.Set(originalURL)
+	userID, _ := getUserIDFromContext(req)
+	urlKey, err := h.Storage.Set(originalURL, userID)
+
 	HeaderStatus := http.StatusCreated
 
 	if err != nil {
@@ -68,8 +81,9 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 		res.Write([]byte("The incoming JSON string should contain a valid URL"))
 		return
 	}
+	userID, _ := getUserIDFromContext(req)
 
-	urlKey, err := h.Storage.Set(jReq.URL)
+	urlKey, err := h.Storage.Set(jReq.URL, userID)
 	HeaderStatus := http.StatusCreated
 
 	if err != nil {
@@ -94,6 +108,68 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 	res.Write(out)
 }
 
+func (h *Handlers) GetUserURL(res http.ResponseWriter, req *http.Request) {
+
+	userID, err := getUserIDFromContext(req)
+
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	jResBatch, err := h.Storage.GetUserURLs(userID)
+	if err != nil {
+		http.Error(res, "No content", http.StatusNoContent)
+		return
+	}
+
+	if len(jResBatch) == 0 {
+		http.Error(res, "No content", http.StatusNoContent)
+		return
+	}
+
+	out, err := json.Marshal(jResBatch)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	res.Write([]byte(out))
+}
+
+func (h *Handlers) DeleteUserURL(res http.ResponseWriter, req *http.Request) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("Unable to handle the request"))
+		return
+	}
+	defer req.Body.Close()
+
+	// Parse JSON request body into a slice of strings
+	var keys []string
+	err = json.Unmarshal(body, &keys)
+	if err != nil {
+		http.Error(res, "Invalid JSON format", http.StatusBadRequest)
+		return
+	}
+
+	userID, _ := getUserIDFromContext(req)
+	deleted, err := h.Storage.DeleteBatch(keys, userID)
+
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if deleted {
+		res.WriteHeader(http.StatusAccepted)
+	} else {
+		res.WriteHeader(http.StatusNotFound)
+	}
+}
+
 func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 	urlKey := chi.URLParam(req, "urlKey")
 
@@ -106,7 +182,14 @@ func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 	originalURL, err := h.Storage.Get(urlKey)
 
 	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
+		var storageErr *storage.StorageError
+
+		if errors.As(err, &storageErr) && storageErr.Type == "deleted" {
+			res.WriteHeader(http.StatusGone)
+		} else {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			res.WriteHeader(http.StatusBadRequest)
+		}
 		res.Write([]byte(err.Error()))
 		return
 	}
@@ -133,7 +216,8 @@ func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 
-	jResBatch, err := h.Storage.SetBatch(jReqBatch)
+	userID, _ := getUserIDFromContext(req)
+	jResBatch, err := h.Storage.SetBatch(jReqBatch, userID)
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

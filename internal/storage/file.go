@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +16,8 @@ type Row struct {
 	ID          string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	UserID      string `json:"userid"`
+	DeletedFlag bool   `json:"deleted"`
 }
 
 type FileStorage struct {
@@ -56,7 +59,8 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	}, nil
 }
 
-func (f *FileStorage) Set(OriginalURL string) (string, error) {
+func (f *FileStorage) Set(OriginalURL string, userID string) (string, error) {
+
 	urlKey := urlkey.GenerateSlug(OriginalURL)
 	if urlKey == "" {
 		return "", fmt.Errorf("shortURL is empty")
@@ -71,9 +75,11 @@ func (f *FileStorage) Set(OriginalURL string) (string, error) {
 
 	row := Row{
 		ID:          rowID,
+		UserID:      userID,
 		ShortURL:    urlKey,
 		OriginalURL: OriginalURL,
 	}
+
 	// Write JSON entry
 	err := f.encoder.Encode(row)
 	if err != nil {
@@ -83,11 +89,11 @@ func (f *FileStorage) Set(OriginalURL string) (string, error) {
 	return urlKey, nil
 }
 
-func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, error) {
+func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
 	jResBatch := make([]models.JSONRes, len(jReqBatch))
 
 	for _, el := range jReqBatch {
-		ShortURL, err := f.Set(el.OriginalURL)
+		ShortURL, err := f.Set(el.OriginalURL, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -100,6 +106,13 @@ func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq) ([]models.JSONRes, er
 		jResBatch = append(jResBatch, row)
 	}
 	return jResBatch, nil
+}
+
+func (f *FileStorage) DeleteBatch(keys []string, userID string) (bool, error) {
+	if len(keys) == 0 {
+		return false, errors.New("no URLs provided for deletion")
+	}
+	return false, nil
 }
 
 func (f *FileStorage) Get(ShortURL string) (string, error) {
@@ -121,6 +134,33 @@ func (f *FileStorage) Get(ShortURL string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("failed to find OriginalURL by ShortURL: %s", ShortURL)
+}
+
+func (f *FileStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
+	jResBatch := make([]models.JSONUserRes, 0)
+
+	data, err := os.ReadFile(f.filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %s", err)
+	}
+
+	// Search all records that were created by user
+	for _, line := range splitLines(string(data)) {
+		var row Row
+		err := json.Unmarshal([]byte(line), &row)
+		if err == nil && row.UserID == userID {
+			row := models.JSONUserRes{
+				UserID:      row.UserID,
+				ShortURL:    row.ShortURL,
+				OriginalURL: row.OriginalURL,
+			}
+			jResBatch = append(jResBatch, row)
+		}
+	}
+	if len(jResBatch) == 0 {
+		return nil, fmt.Errorf("failed to find records for userID: %s", userID)
+	}
+	return jResBatch, nil
 }
 
 // Close the file when FileStorage is no longer needed
