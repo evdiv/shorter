@@ -8,6 +8,7 @@ import (
 	"shorter/internal/config"
 	"shorter/internal/models"
 	"shorter/internal/urlkey"
+	"strings"
 	"time"
 )
 
@@ -127,34 +128,36 @@ func (storage *DBStorage) DeleteBatch(keys []string, userID string) (bool, error
 	if len(keys) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
-	query := `UPDATE Links SET DeletedFlag = true WHERE ShortURL = $1 AND UserID = $2`
+	// Generate placeholders: $1, $2, ..., $N for IN(...)
+	placeholders := make([]string, len(keys))
+	args := make([]interface{}, len(keys)+1) // +1 for userID
 
-	stmt, err := storage.db.Prepare(query)
+	for i, key := range keys {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = key
+	}
+	// Append userID at the correct position
+	args[len(keys)] = userID
+	userIDPlaceholder := fmt.Sprintf("$%d", len(keys)+1) // UserID placeholder
+
+	query := fmt.Sprintf(
+		`UPDATE Links SET DeletedFlag = true WHERE ShortURL IN (%s) AND UserID = %s`,
+		strings.Join(placeholders, ","), userIDPlaceholder)
+
+	fmt.Println(query)
+
+	result, err := storage.db.Exec(query, args...)
 	if err != nil {
 		return false, fmt.Errorf("failed to prepare statement: %w", err)
 	}
-	defer stmt.Close()
 
-	var updatedCount int64
-
-	for _, key := range keys {
-		result, err := stmt.Exec(key, userID)
-		if err != nil {
-			return false, fmt.Errorf("failed to update URL %s: %w", key, err)
-		}
-
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			return false, fmt.Errorf("error retrieving affected rows for %s: %w", key, err)
-		}
-
-		if rowsAffected > 0 {
-			updatedCount++
-		}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("error retrieving affected rows: %w", err)
 	}
 
 	// Return true if at least one URL was marked as deleted
-	return updatedCount > 0, nil
+	return rowsAffected > 0, nil
 }
 
 func (storage *DBStorage) Get(ShortURL string) (string, error) {
