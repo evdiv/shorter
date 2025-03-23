@@ -56,7 +56,19 @@ func (m *MemoryStorage) DeleteBatch(keys []string, userID string) (bool, error) 
 	if len(keys) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
-	return false, nil
+	//Flag that the record was deleted
+	deleted := false
+
+	for _, key := range keys {
+		urlKey := strings.ToLower(key)
+		if existing, found := m.data[urlKey]; found && existing[1] == userID {
+			//Delete the record
+			delete(m.data, urlKey)
+			deleted = true
+		}
+	}
+	//Return true if even a single record was deleted
+	return deleted, nil
 }
 
 // Get - retrieves a value from memory

@@ -112,7 +112,41 @@ func (f *FileStorage) DeleteBatch(keys []string, userID string) (bool, error) {
 	if len(keys) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
-	return false, nil
+
+	// Read data from the file
+	data, err := os.ReadFile(f.filePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to read file: %s", err)
+	}
+
+	var rows []Row
+	var updatedRows []Row
+
+	// Unmarshal the data
+	if err := json.Unmarshal(data, &rows); err != nil {
+		return false, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	// Set item as deleted
+	for _, row := range rows {
+		if contains(keys, row.ShortURL) && row.UserID == userID {
+			row.DeletedFlag = true
+		}
+		updatedRows = append(updatedRows, row)
+	}
+
+	//Marshal updated data
+	newData, err := json.Marshal(updatedRows)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal updated rows: %w", err)
+	}
+
+	// Write data into the file
+	if err := os.WriteFile(f.filePath, newData, 0644); err != nil {
+		return false, fmt.Errorf("failed to write to file: %w", err)
+	}
+
+	return true, nil
 }
 
 func (f *FileStorage) Get(ShortURL string) (string, error) {
@@ -209,4 +243,14 @@ func splitLines(data string) []string {
 		lines = append(lines, data[start:])
 	}
 	return lines
+}
+
+// contains - check the item in the slice
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }
