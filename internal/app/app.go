@@ -7,14 +7,16 @@ import (
 	"os/signal"
 	"shorter/internal/config"
 	"shorter/internal/handlers"
+	"shorter/internal/models"
 	"shorter/internal/router"
 	"shorter/internal/storage"
 )
 
 type App struct {
-	Router  http.Handler
-	Config  *config.Config
-	Storage storage.Storer
+	Router      http.Handler
+	Config      *config.Config
+	Storage     storage.Storer
+	DeleteQueue chan models.KeysToDelete
 }
 
 func NewApp() (*App, error) {
@@ -28,16 +30,20 @@ func NewApp() (*App, error) {
 		return nil, err
 	}
 
+	// Create a channel for batch deleting records
+	deleteQueue := make(chan models.KeysToDelete, 1024)
+
 	// Initialize handlers
-	h := handlers.NewHandlers(appStorage)
+	h := handlers.NewHandlers(appStorage, deleteQueue)
 
 	// Initialize router
 	r := router.NewRouter(h)
 
 	return &App{
-		Router:  r,
-		Config:  appConfig,
-		Storage: appStorage,
+		Router:      r,
+		Config:      appConfig,
+		Storage:     appStorage,
+		DeleteQueue: deleteQueue,
 	}, nil
 }
 
@@ -51,6 +57,9 @@ func (a *App) Run() error {
 	log.Println("File Storage Path: " + a.Config.StoragePath)
 	log.Println("Db Connection String: " + a.Config.DBConnection)
 
+	// Start background deletion worker
+	go a.StartDeletionWorker()
+
 	go func() {
 		_ = http.ListenAndServe(config.GetPort("Local"), a.Router)
 	}()
@@ -59,4 +68,14 @@ func (a *App) Run() error {
 	log.Println("Shutdown signal received")
 	a.Storage.Close()
 	return nil
+}
+
+// StartDeletionWorker processes delete tasks from the queue.
+func (a *App) StartDeletionWorker() {
+	for task := range a.DeleteQueue {
+		_, err := a.Storage.DeleteBatch(task.Keys, task.UserID)
+		if err != nil {
+			log.Printf("Failed to delete records: %v\n", err)
+		}
+	}
 }

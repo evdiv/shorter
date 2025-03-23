@@ -144,8 +144,6 @@ func (storage *DBStorage) DeleteBatch(keys []string, userID string) (bool, error
 		`UPDATE Links SET DeletedFlag = true WHERE ShortURL IN (%s) AND UserID = %s`,
 		strings.Join(placeholders, ","), userIDPlaceholder)
 
-	fmt.Println(query)
-
 	result, err := storage.db.Exec(query, args...)
 	if err != nil {
 		return false, fmt.Errorf("failed to prepare statement: %w", err)

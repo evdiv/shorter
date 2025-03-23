@@ -5,6 +5,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
 	"shorter/internal/config"
+	"shorter/internal/models"
+
 	"shorter/internal/storage"
 	"strings"
 	"testing"
@@ -13,7 +15,9 @@ import (
 func setupRouter() *chi.Mux {
 
 	memStorage := storage.NewMemoryStorage()
-	h := NewHandlers(memStorage)
+	deleteQueue := make(chan models.KeysToDelete, 1024)
+
+	h := NewHandlers(memStorage, deleteQueue)
 
 	r := chi.NewRouter()
 	r.Post("/", h.PostURL)

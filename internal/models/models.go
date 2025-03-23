@@ -18,3 +18,8 @@ type JSONUserRes struct {
 	OriginalURL string `json:"original_url,omitempty"`
 	UserID      string `json:"-"`
 }
+
+type KeysToDelete struct {
+	Keys   []string
+	UserID string
+}

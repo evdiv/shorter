@@ -15,12 +15,16 @@ import (
 
 // Handlers struct holds dependencies (storage)
 type Handlers struct {
-	Storage storage.Storer
+	Storage     storage.Storer
+	DeleteQueue chan models.KeysToDelete
 }
 
 // NewHandlers initializes handlers with storage
-func NewHandlers(s storage.Storer) *Handlers {
-	return &Handlers{Storage: s}
+func NewHandlers(s storage.Storer, dq chan models.KeysToDelete) *Handlers {
+	return &Handlers{
+		Storage:     s,
+		DeleteQueue: dq,
+	}
 }
 
 func getUserIDFromContext(req *http.Request) (string, error) {
@@ -156,18 +160,9 @@ func (h *Handlers) DeleteUserURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	userID, _ := getUserIDFromContext(req)
-	deleted, err := h.Storage.DeleteBatch(keys, userID)
-
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if deleted {
-		res.WriteHeader(http.StatusAccepted)
-	} else {
-		res.WriteHeader(http.StatusNotFound)
-	}
+	//go h.Storage.DeleteBatch(keys, userID)
+	h.DeleteQueue <- models.KeysToDelete{Keys: keys, UserID: userID}
+	res.WriteHeader(http.StatusAccepted)
 }
 
 func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
