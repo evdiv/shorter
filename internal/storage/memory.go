@@ -52,22 +52,27 @@ func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]m
 	return jResBatch, nil
 }
 
-func (m *MemoryStorage) DeleteBatch(keys []string, userID string) (bool, error) {
-	if len(keys) == 0 {
+func (m *MemoryStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool, error) {
+	if len(keysToDelete) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
-	//Flag that the record was deleted
+
+	// Flag that indicates if any record was deleted
 	deleted := false
 
-	for _, key := range keys {
-		urlKey := strings.ToLower(key)
-		if existing, found := m.data[urlKey]; found && existing[1] == userID {
-			//Delete the record
-			delete(m.data, urlKey)
-			deleted = true
+	// Iterate over each KeysToDelete entry
+	for _, item := range keysToDelete {
+		for _, key := range item.Keys {
+			urlKey := strings.ToLower(key)
+			if existing, found := m.data[urlKey]; found && existing[1] == item.UserID {
+				// Delete the record
+				delete(m.data, urlKey)
+				deleted = true
+			}
 		}
 	}
-	//Return true if even a single record was deleted
+
+	// Return true if at least one record was deleted
 	return deleted, nil
 }
 

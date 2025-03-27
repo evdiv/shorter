@@ -9,7 +9,7 @@ import (
 type Storer interface {
 	Set(url string, userID string) (string, error)
 	SetBatch(entries []models.JSONReq, userID string) ([]models.JSONRes, error)
-	DeleteBatch(keys []string, userID string) (bool, error)
+	DeleteBatch(keysToDelete []models.KeysToDelete) (bool, error)
 	GetUserURLs(userID string) ([]models.JSONUserRes, error)
 	Get(key string) (string, error)
 	IsAvailable() bool

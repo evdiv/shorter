@@ -124,38 +124,55 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([
 	return jResBatch, nil
 }
 
-func (storage *DBStorage) DeleteBatch(keys []string, userID string) (bool, error) {
-	if len(keys) == 0 {
+func (storage *DBStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool, error) {
+	if len(keysToDelete) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
-	// Generate placeholders: $1, $2, ..., $N for IN(...)
-	placeholders := make([]string, len(keys))
-	args := make([]interface{}, len(keys)+1) // +1 for userID
 
-	for i, key := range keys {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-		args[i] = key
+	successfulDeletes := 0
+
+	// Group keys by UserID
+	keyGroups := make(map[string][]string)
+	for _, item := range keysToDelete {
+		keyGroups[item.UserID] = append(keyGroups[item.UserID], item.Keys...)
 	}
-	// Append userID at the correct position
-	args[len(keys)] = userID
-	userIDPlaceholder := fmt.Sprintf("$%d", len(keys)+1) // UserID placeholder
+	// Process each UserID separately
+	for userID, keys := range keyGroups {
+		if len(keys) == 0 {
+			continue
+		}
 
-	query := fmt.Sprintf(
-		`UPDATE Links SET DeletedFlag = true WHERE ShortURL IN (%s) AND UserID = %s`,
-		strings.Join(placeholders, ","), userIDPlaceholder)
+		// Generate placeholders: $1, $2, ..., $N
+		placeholders := make([]string, len(keys))
+		args := make([]interface{}, len(keys)+1) // +1 for UserID
 
-	result, err := storage.db.Exec(query, args...)
-	if err != nil {
-		return false, fmt.Errorf("failed to prepare statement: %w", err)
+		for i, key := range keys {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args[i] = key
+		}
+
+		// Append userID as the last parameter
+		args[len(keys)] = userID
+		userIDPlaceholder := fmt.Sprintf("$%d", len(keys)+1)
+
+		// Construct SQL query safely
+		query := fmt.Sprintf(
+			`UPDATE Links SET DeletedFlag = true WHERE ShortURL IN (%s) AND UserID = %s`,
+			strings.Join(placeholders, ","), userIDPlaceholder)
+
+		result, err := storage.db.Exec(query, args...)
+		if err != nil {
+			return false, fmt.Errorf("failed to execute delete query: %w", err)
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return false, fmt.Errorf("error retrieving affected rows: %w", err)
+		}
+
+		successfulDeletes += int(rowsAffected)
 	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("error retrieving affected rows: %w", err)
-	}
-
-	// Return true if at least one URL was marked as deleted
-	return rowsAffected > 0, nil
+	return successfulDeletes > 0, nil
 }
 
 func (storage *DBStorage) Get(ShortURL string) (string, error) {

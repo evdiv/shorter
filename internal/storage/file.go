@@ -108,8 +108,8 @@ func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]mod
 	return jResBatch, nil
 }
 
-func (f *FileStorage) DeleteBatch(keys []string, userID string) (bool, error) {
-	if len(keys) == 0 {
+func (f *FileStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool, error) {
+	if len(keysToDelete) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
 
@@ -120,23 +120,26 @@ func (f *FileStorage) DeleteBatch(keys []string, userID string) (bool, error) {
 	}
 
 	var rows []Row
-	var updatedRows []Row
 
 	// Unmarshal the data
 	if err := json.Unmarshal(data, &rows); err != nil {
 		return false, fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
-	// Set item as deleted
-	for _, row := range rows {
-		if contains(keys, row.ShortURL) && row.UserID == userID {
-			row.DeletedFlag = true
+	// Set items as deleted
+	for _, item := range keysToDelete {
+		for _, key := range item.Keys {
+			for i, row := range rows {
+				if row.ShortURL == key && row.UserID == item.UserID {
+					// Mark the row as deleted
+					rows[i].DeletedFlag = true
+				}
+			}
 		}
-		updatedRows = append(updatedRows, row)
 	}
 
-	//Marshal updated data
-	newData, err := json.Marshal(updatedRows)
+	// Marshal updated data
+	newData, err := json.Marshal(rows)
 	if err != nil {
 		return false, fmt.Errorf("failed to marshal updated rows: %w", err)
 	}

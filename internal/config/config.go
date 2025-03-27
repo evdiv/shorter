@@ -8,19 +8,21 @@ import (
 )
 
 type Config struct {
-	LocalHost    string `env:"LOCAL_ADDRESS"`
-	ResultHost   string `env:"RESULT_ADDRESS"`
-	StoragePath  string `env:"FILE_STORAGE_PATH"`
-	DBConnection string `env:"DATABASE_DSN"`
-	LoadedFrom   map[string]string
+	LocalHost        string `env:"LOCAL_ADDRESS"`
+	ResultHost       string `env:"RESULT_ADDRESS"`
+	StoragePath      string `env:"FILE_STORAGE_PATH"`
+	DBConnection     string `env:"DATABASE_DSN"`
+	LoadedFrom       map[string]string
+	DeleteBufferSize int `env:"DELETE_BUFFER_SIZE"`
 }
 
 var AppConfig = Config{
-	LocalHost:    "",
-	ResultHost:   "",
-	StoragePath:  "",
-	DBConnection: "",
-	LoadedFrom:   make(map[string]string),
+	LocalHost:        "",
+	ResultHost:       "",
+	StoragePath:      "",
+	DBConnection:     "",
+	LoadedFrom:       make(map[string]string),
+	DeleteBufferSize: 1024,
 }
 
 // NewConfig - loads configs in the required order

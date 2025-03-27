@@ -10,13 +10,14 @@ import (
 	"shorter/internal/models"
 	"shorter/internal/router"
 	"shorter/internal/storage"
+	"time"
 )
 
 type App struct {
-	Router      http.Handler
-	Config      *config.Config
-	Storage     storage.Storer
-	DeleteQueue chan models.KeysToDelete
+	Router     http.Handler
+	Config     *config.Config
+	Storage    storage.Storer
+	DeleteChan chan models.KeysToDelete
 }
 
 func NewApp() (*App, error) {
@@ -31,19 +32,19 @@ func NewApp() (*App, error) {
 	}
 
 	// Create a channel for batch deleting records
-	deleteQueue := make(chan models.KeysToDelete, 1024)
+	deleteChan := make(chan models.KeysToDelete, appConfig.DeleteBufferSize)
 
 	// Initialize handlers
-	h := handlers.NewHandlers(appStorage, deleteQueue)
+	h := handlers.NewHandlers(appStorage, deleteChan)
 
 	// Initialize router
 	r := router.NewRouter(h)
 
 	return &App{
-		Router:      r,
-		Config:      appConfig,
-		Storage:     appStorage,
-		DeleteQueue: deleteQueue,
+		Router:     r,
+		Config:     appConfig,
+		Storage:    appStorage,
+		DeleteChan: deleteChan,
 	}, nil
 }
 
@@ -72,10 +73,30 @@ func (a *App) Run() error {
 
 // StartDeletionWorker processes delete tasks from the queue.
 func (a *App) StartDeletionWorker() {
-	for task := range a.DeleteQueue {
-		_, err := a.Storage.DeleteBatch(task.Keys, task.UserID)
-		if err != nil {
-			log.Printf("Failed to delete records: %v\n", err)
+
+	ticker := time.NewTicker(10 * time.Second)
+	var keysToDelete []models.KeysToDelete
+
+	for {
+		select {
+		case k := <-a.DeleteChan:
+			//Add a key to the slice for deleting later
+			keysToDelete = append(keysToDelete, k)
+		case <-ticker.C:
+			//Wait for at least one message
+			if len(keysToDelete) == 0 {
+				continue
+			}
+			//update all incoming requests at once
+			_, err := a.Storage.DeleteBatch(keysToDelete)
+			if err != nil {
+				log.Printf("Failed to delete records: %v\n", err)
+				continue
+			}
+
+			//Remove all keys that have been sent
+			keysToDelete = nil
+
 		}
 	}
 }

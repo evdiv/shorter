@@ -32,7 +32,6 @@ func getUserIDFromContext(req *http.Request) (string, error) {
 	if !ok {
 		return "", errors.New("userID not found in context")
 	}
-
 	return userID, nil
 }
 
@@ -160,8 +159,11 @@ func (h *Handlers) DeleteUserURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	userID, _ := getUserIDFromContext(req)
-	//go h.Storage.DeleteBatch(keys, userID)
+
+	// send key to the queue for deleting
 	h.DeleteQueue <- models.KeysToDelete{Keys: keys, UserID: userID}
+
+	//Notify the sender that the key was accepted successfully
 	res.WriteHeader(http.StatusAccepted)
 }
 
