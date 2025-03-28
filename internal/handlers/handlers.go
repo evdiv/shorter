@@ -43,7 +43,6 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 		res.Write([]byte("Unable to handle the request"))
 		return
 	}
-	defer req.Body.Close()
 
 	originalURL, valid := urlkey.IsValidURL(string(body))
 
@@ -148,7 +147,6 @@ func (h *Handlers) DeleteUserURL(res http.ResponseWriter, req *http.Request) {
 		res.Write([]byte("Unable to handle the request"))
 		return
 	}
-	defer req.Body.Close()
 
 	// Parse JSON request body into a slice of strings
 	var keys []string

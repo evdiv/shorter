@@ -98,11 +98,28 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([
 
 	jResBatch := []models.JSONRes{}
 
-	stmt, err := storage.db.Prepare(query)
+	// Start a new transaction
+	tx, err := storage.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %s", err)
+	}
+	//Flag for the DB Transaction rollback
+	rollback := true
+
+	stmt, err := tx.Prepare(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare statement: %s", err)
 	}
-	defer stmt.Close()
+
+	// Ensure cleanup and rollback in case of error
+	defer func() {
+		if stmt != nil {
+			stmt.Close()
+		}
+		if rollback {
+			tx.Rollback()
+		}
+	}()
 
 	for _, el := range jReqBatch {
 		urlKey := urlkey.GenerateSlug(el.OriginalURL)
@@ -119,6 +136,14 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([
 			OriginalURL: el.OriginalURL,
 		}
 		jResBatch = append(jResBatch, row)
+	}
+
+	//If we are here rollback is not needed
+	rollback = false
+
+	// Commit the transaction after all inserts succeed
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return jResBatch, nil
@@ -155,12 +180,25 @@ func (storage *DBStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool,
 		args[len(keys)] = userID
 		userIDPlaceholder := fmt.Sprintf("$%d", len(keys)+1)
 
-		// Construct SQL query safely
+		// Construct SQL query
 		query := fmt.Sprintf(
 			`UPDATE Links SET DeletedFlag = true WHERE ShortURL IN (%s) AND UserID = %s`,
 			strings.Join(placeholders, ","), userIDPlaceholder)
 
-		result, err := storage.db.Exec(query, args...)
+		tx, err := storage.db.Begin()
+		if err != nil {
+			return false, fmt.Errorf("failed to begin transaction: %s", err)
+		}
+
+		// Ensure rollback only if an error occurs
+		rollback := true
+		defer func() {
+			if rollback {
+				tx.Rollback()
+			}
+		}()
+
+		result, err := tx.Exec(query, args...)
 		if err != nil {
 			return false, fmt.Errorf("failed to execute delete query: %w", err)
 		}
@@ -171,6 +209,16 @@ func (storage *DBStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool,
 		}
 
 		successfulDeletes += int(rowsAffected)
+
+		// If we reached here, mark rollback as false before committing
+		rollback = false
+
+		// Commit the transaction
+		err = tx.Commit()
+		if err != nil {
+			return false, fmt.Errorf("failed to commit transaction: %w", err)
+		}
+
 	}
 	return successfulDeletes > 0, nil
 }
