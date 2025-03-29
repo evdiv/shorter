@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,14 +60,19 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	}, nil
 }
 
-func (f *FileStorage) Set(OriginalURL string, userID string) (string, error) {
+func (f *FileStorage) Set(ctx context.Context, OriginalURL string, userID string) (string, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return "", ctx.Err()
+	default:
+	}
 
 	urlKey := urlkey.GenerateSlug(OriginalURL)
 	if urlKey == "" {
 		return "", fmt.Errorf("shortURL is empty")
 	}
 	//Check for duplications
-	if storedURL, _ := f.Get(urlKey); storedURL != "" {
+	if storedURL, _ := f.Get(ctx, urlKey); storedURL != "" {
 		err := fmt.Errorf("the URL: %s is already stored in the file", storedURL)
 		return urlKey, NewStorageError("already exists", storedURL, urlKey, err)
 	}
@@ -89,11 +95,17 @@ func (f *FileStorage) Set(OriginalURL string, userID string) (string, error) {
 	return urlKey, nil
 }
 
-func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
+func (f *FileStorage) SetBatch(ctx context.Context, jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return nil, ctx.Err()
+	default:
+	}
+
 	jResBatch := make([]models.JSONRes, len(jReqBatch))
 
 	for _, el := range jReqBatch {
-		ShortURL, err := f.Set(el.OriginalURL, userID)
+		ShortURL, err := f.Set(ctx, el.OriginalURL, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +120,13 @@ func (f *FileStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]mod
 	return jResBatch, nil
 }
 
-func (f *FileStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool, error) {
+func (f *FileStorage) DeleteBatch(ctx context.Context, keysToDelete []models.KeysToDelete) (bool, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return false, ctx.Err()
+	default:
+	}
+
 	if len(keysToDelete) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
@@ -152,7 +170,13 @@ func (f *FileStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool, err
 	return true, nil
 }
 
-func (f *FileStorage) Get(ShortURL string) (string, error) {
+func (f *FileStorage) Get(ctx context.Context, ShortURL string) (string, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return "", ctx.Err()
+	default:
+	}
+
 	ShortURL = strings.ToLower(ShortURL)
 	if ShortURL == "" {
 		return "", fmt.Errorf("shortURL is empty")
@@ -173,7 +197,13 @@ func (f *FileStorage) Get(ShortURL string) (string, error) {
 	return "", fmt.Errorf("failed to find OriginalURL by ShortURL: %s", ShortURL)
 }
 
-func (f *FileStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
+func (f *FileStorage) GetUserURLs(ctx context.Context, userID string) ([]models.JSONUserRes, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return nil, ctx.Err()
+	default:
+	}
+
 	jResBatch := make([]models.JSONUserRes, 0)
 
 	data, err := os.ReadFile(f.filePath)

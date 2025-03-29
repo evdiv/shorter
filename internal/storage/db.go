@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -59,7 +60,7 @@ func (storage *DBStorage) IsAvailable() bool {
 	return err == nil
 }
 
-func (storage *DBStorage) Set(OriginalURL string, userID string) (string, error) {
+func (storage *DBStorage) Set(ctx context.Context, OriginalURL string, userID string) (string, error) {
 
 	query := `INSERT INTO Links (ShortURL, OriginalURL, UserID)
 		VALUES ($1, $2, $3)
@@ -71,11 +72,7 @@ func (storage *DBStorage) Set(OriginalURL string, userID string) (string, error)
 		return "", fmt.Errorf("the short url is empty")
 	}
 
-	fmt.Printf("urlKey: %s\n", urlKey)
-	fmt.Printf("OriginalURL: %s\n", OriginalURL)
-	fmt.Printf("UserID: %s\n", userID)
-
-	result, err := storage.db.Exec(query, urlKey, OriginalURL, userID)
+	result, err := storage.db.ExecContext(ctx, query, urlKey, OriginalURL, userID)
 	if err != nil {
 		return "", NewStorageError("failed to insert", OriginalURL, urlKey, err)
 	}
@@ -89,7 +86,7 @@ func (storage *DBStorage) Set(OriginalURL string, userID string) (string, error)
 	return urlKey, nil
 }
 
-func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
+func (storage *DBStorage) SetBatch(ctx context.Context, jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
 
 	query := `INSERT INTO Links (ShortURL, OriginalURL, UserID)
 		VALUES ($1, $2, $3)
@@ -126,7 +123,7 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([
 		if urlKey == "" {
 			return nil, fmt.Errorf("the urlKey for Original Url: %s is empty", el.OriginalURL)
 		}
-		_, err := stmt.Exec(urlKey, el.OriginalURL, userID)
+		_, err := stmt.ExecContext(ctx, urlKey, el.OriginalURL, userID)
 		if err != nil {
 			return nil, NewStorageError("failed to insert", urlKey, el.OriginalURL, err)
 		}
@@ -149,7 +146,7 @@ func (storage *DBStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([
 	return jResBatch, nil
 }
 
-func (storage *DBStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool, error) {
+func (storage *DBStorage) DeleteBatch(ctx context.Context, keysToDelete []models.KeysToDelete) (bool, error) {
 	if len(keysToDelete) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
@@ -198,7 +195,7 @@ func (storage *DBStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool,
 			}
 		}()
 
-		result, err := tx.Exec(query, args...)
+		result, err := tx.ExecContext(ctx, query, args...)
 		if err != nil {
 			return false, fmt.Errorf("failed to execute delete query: %w", err)
 		}
@@ -223,15 +220,13 @@ func (storage *DBStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool,
 	return successfulDeletes > 0, nil
 }
 
-func (storage *DBStorage) Get(ShortURL string) (string, error) {
+func (storage *DBStorage) Get(ctx context.Context, ShortURL string) (string, error) {
 	query := `SELECT OriginalURL, DeletedFlag FROM Links WHERE ShortURL = $1`
 
 	var OriginalURL string
 	var DeletedFlag bool
 
-	row := storage.db.QueryRow(query, ShortURL)
-
-	err := row.Scan(&OriginalURL, &DeletedFlag)
+	err := storage.db.QueryRowContext(ctx, query, ShortURL).Scan(&OriginalURL, &DeletedFlag)
 	if err != nil {
 		return "", NewStorageError("failed to select", OriginalURL, ShortURL, err)
 	}
@@ -241,11 +236,11 @@ func (storage *DBStorage) Get(ShortURL string) (string, error) {
 	return OriginalURL, nil
 }
 
-func (storage *DBStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
+func (storage *DBStorage) GetUserURLs(ctx context.Context, userID string) ([]models.JSONUserRes, error) {
 	jResBatch := make([]models.JSONUserRes, 0)
 
 	query := `SELECT ShortURL, OriginalURL FROM Links WHERE UserID = $1`
-	rows, err := storage.db.Query(query, userID)
+	rows, err := storage.db.QueryContext(ctx, query, userID)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve links for user: %s", userID)

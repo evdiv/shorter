@@ -36,6 +36,7 @@ func getUserIDFromContext(req *http.Request) (string, error) {
 }
 
 func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -53,7 +54,7 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 	}
 
 	userID, _ := getUserIDFromContext(req)
-	urlKey, err := h.Storage.Set(originalURL, userID)
+	urlKey, err := h.Storage.Set(ctx, originalURL, userID)
 
 	HeaderStatus := http.StatusCreated
 
@@ -71,6 +72,8 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+
 	var jReq models.JSONReq
 	var jRes models.JSONRes
 	if err := json.NewDecoder(req.Body).Decode(&jReq); err != nil {
@@ -85,7 +88,7 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 	}
 	userID, _ := getUserIDFromContext(req)
 
-	urlKey, err := h.Storage.Set(jReq.URL, userID)
+	urlKey, err := h.Storage.Set(ctx, jReq.URL, userID)
 	HeaderStatus := http.StatusCreated
 
 	if err != nil {
@@ -111,7 +114,7 @@ func (h *Handlers) ShortenURL(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) GetUserURL(res http.ResponseWriter, req *http.Request) {
-
+	ctx := req.Context()
 	userID, err := getUserIDFromContext(req)
 
 	if err != nil {
@@ -119,7 +122,7 @@ func (h *Handlers) GetUserURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jResBatch, err := h.Storage.GetUserURLs(userID)
+	jResBatch, err := h.Storage.GetUserURLs(ctx, userID)
 	if err != nil {
 		http.Error(res, "No content", http.StatusNoContent)
 		return
@@ -166,6 +169,7 @@ func (h *Handlers) DeleteUserURL(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	urlKey := chi.URLParam(req, "urlKey")
 
 	if urlKey == "" {
@@ -174,7 +178,7 @@ func (h *Handlers) GetURL(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalURL, err := h.Storage.Get(urlKey)
+	originalURL, err := h.Storage.Get(ctx, urlKey)
 
 	if err != nil {
 		var storageErr *storage.StorageError
@@ -203,6 +207,7 @@ func (h *Handlers) IsAvailable(res http.ResponseWriter, req *http.Request) {
 
 // ShortenBatchURL - inserts batch records in storage
 func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	jReqBatch := []models.JSONReq{}
 
 	if err := json.NewDecoder(req.Body).Decode(&jReqBatch); err != nil {
@@ -212,7 +217,7 @@ func (h *Handlers) ShortenBatchURL(res http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
 	userID, _ := getUserIDFromContext(req)
-	jResBatch, err := h.Storage.SetBatch(jReqBatch, userID)
+	jResBatch, err := h.Storage.SetBatch(ctx, jReqBatch, userID)
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

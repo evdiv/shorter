@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"shorter/internal/models"
@@ -18,7 +19,13 @@ func NewMemoryStorage() *MemoryStorage {
 }
 
 // Set - stores a url into the memory storage
-func (m *MemoryStorage) Set(OriginalURL string, userID string) (string, error) {
+func (m *MemoryStorage) Set(ctx context.Context, OriginalURL string, userID string) (string, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return "", ctx.Err()
+	default:
+	}
+
 	urlKey := urlkey.GenerateSlug(OriginalURL)
 	if urlKey == "" {
 		return "", fmt.Errorf("ShortURL is empty")
@@ -33,11 +40,17 @@ func (m *MemoryStorage) Set(OriginalURL string, userID string) (string, error) {
 	return urlKey, nil
 }
 
-func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
+func (m *MemoryStorage) SetBatch(ctx context.Context, jReqBatch []models.JSONReq, userID string) ([]models.JSONRes, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return nil, ctx.Err()
+	default:
+	}
+
 	jResBatch := make([]models.JSONRes, len(jReqBatch))
 
 	for _, el := range jReqBatch {
-		ShortURL, err := m.Set(el.OriginalURL, userID)
+		ShortURL, err := m.Set(ctx, el.OriginalURL, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +65,13 @@ func (m *MemoryStorage) SetBatch(jReqBatch []models.JSONReq, userID string) ([]m
 	return jResBatch, nil
 }
 
-func (m *MemoryStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool, error) {
+func (m *MemoryStorage) DeleteBatch(ctx context.Context, keysToDelete []models.KeysToDelete) (bool, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return false, ctx.Err()
+	default:
+	}
+
 	if len(keysToDelete) == 0 {
 		return false, errors.New("no URLs provided for deletion")
 	}
@@ -77,7 +96,13 @@ func (m *MemoryStorage) DeleteBatch(keysToDelete []models.KeysToDelete) (bool, e
 }
 
 // Get - retrieves a value from memory
-func (m *MemoryStorage) Get(urlKey string) (string, error) {
+func (m *MemoryStorage) Get(ctx context.Context, urlKey string) (string, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return "", ctx.Err()
+	default:
+	}
+
 	urlKey = strings.ToLower(urlKey)
 
 	existing, found := m.data[urlKey]
@@ -87,7 +112,13 @@ func (m *MemoryStorage) Get(urlKey string) (string, error) {
 	return existing[0], nil
 }
 
-func (m *MemoryStorage) GetUserURLs(userID string) ([]models.JSONUserRes, error) {
+func (m *MemoryStorage) GetUserURLs(ctx context.Context, userID string) ([]models.JSONUserRes, error) {
+	select {
+	case <-ctx.Done(): // Check if the context is canceled
+		return nil, ctx.Err()
+	default:
+	}
+
 	jResBatch := make([]models.JSONUserRes, 0)
 
 	for key, el := range m.data {
