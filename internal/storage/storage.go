@@ -1,15 +1,18 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"shorter/internal/config"
 	"shorter/internal/models"
 )
 
 type Storer interface {
-	Set(url string) (string, error)
-	SetBatch(entries []models.JSONReq) ([]models.JSONRes, error)
-	Get(key string) (string, error)
+	Set(ctx context.Context, url string, userID string) (string, error)
+	SetBatch(ctx context.Context, entries []models.JSONReq, userID string) ([]models.JSONRes, error)
+	DeleteBatch(ctx context.Context, keysToDelete []models.KeysToDelete) (bool, error)
+	GetUserURLs(ctx context.Context, userID string) ([]models.JSONUserRes, error)
+	Get(ctx context.Context, key string) (string, error)
 	IsAvailable() bool
 	Close() error
 }

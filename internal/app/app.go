@@ -1,20 +1,24 @@
 package app
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"shorter/internal/config"
 	"shorter/internal/handlers"
+	"shorter/internal/models"
 	"shorter/internal/router"
 	"shorter/internal/storage"
+	"time"
 )
 
 type App struct {
-	Router  http.Handler
-	Config  *config.Config
-	Storage storage.Storer
+	Router     http.Handler
+	Config     *config.Config
+	Storage    storage.Storer
+	DeleteChan chan models.KeysToDelete
 }
 
 func NewApp() (*App, error) {
@@ -28,16 +32,20 @@ func NewApp() (*App, error) {
 		return nil, err
 	}
 
+	// Create a channel for batch deleting records
+	deleteChan := make(chan models.KeysToDelete, appConfig.DeleteBufferSize)
+
 	// Initialize handlers
-	h := handlers.NewHandlers(appStorage)
+	h := handlers.NewHandlers(appStorage, deleteChan)
 
 	// Initialize router
 	r := router.NewRouter(h)
 
 	return &App{
-		Router:  r,
-		Config:  appConfig,
-		Storage: appStorage,
+		Router:     r,
+		Config:     appConfig,
+		Storage:    appStorage,
+		DeleteChan: deleteChan,
 	}, nil
 }
 
@@ -46,10 +54,16 @@ func (a *App) Run() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	log.Println("Local Host: " + a.Config.LocalHost)
 	log.Println("Result Host: " + a.Config.ResultHost)
 	log.Println("File Storage Path: " + a.Config.StoragePath)
 	log.Println("Db Connection String: " + a.Config.DBConnection)
+
+	// Start background deletion worker
+	go a.StartDeletionWorker(ctx)
 
 	go func() {
 		_ = http.ListenAndServe(config.GetPort("Local"), a.Router)
@@ -59,4 +73,37 @@ func (a *App) Run() error {
 	log.Println("Shutdown signal received")
 	a.Storage.Close()
 	return nil
+}
+
+// StartDeletionWorker processes delete tasks from the queue.
+func (a *App) StartDeletionWorker(ctx context.Context) {
+
+	ticker := time.NewTicker(10 * time.Second)
+	var keysToDelete []models.KeysToDelete
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Deletion worker shutting down...")
+			return
+		case k := <-a.DeleteChan:
+			//Add a key to the slice for deleting later
+			keysToDelete = append(keysToDelete, k)
+		case <-ticker.C:
+			//Wait for at least one message
+			if len(keysToDelete) == 0 {
+				continue
+			}
+			//update all incoming requests at once
+			_, err := a.Storage.DeleteBatch(ctx, keysToDelete)
+			if err != nil {
+				log.Printf("Failed to delete records: %v\n", err)
+				continue
+			}
+
+			//Remove all keys that have been sent
+			keysToDelete = nil
+
+		}
+	}
 }

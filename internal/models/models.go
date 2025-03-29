@@ -12,3 +12,14 @@ type JSONRes struct {
 	ShortURL    string `json:"short_url,omitempty"`
 	OriginalURL string `json:"-"`
 }
+
+type JSONUserRes struct {
+	ShortURL    string `json:"short_url,omitempty"`
+	OriginalURL string `json:"original_url,omitempty"`
+	UserID      string `json:"-"`
+}
+
+type KeysToDelete struct {
+	Keys   []string
+	UserID string
+}

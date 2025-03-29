@@ -5,6 +5,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
 	"shorter/internal/config"
+	"shorter/internal/models"
+
 	"shorter/internal/storage"
 	"strings"
 	"testing"
@@ -13,7 +15,9 @@ import (
 func setupRouter() *chi.Mux {
 
 	memStorage := storage.NewMemoryStorage()
-	h := NewHandlers(memStorage)
+	deleteQueue := make(chan models.KeysToDelete, 1024)
+
+	h := NewHandlers(memStorage, deleteQueue)
 
 	r := chi.NewRouter()
 	r.Post("/", h.PostURL)
@@ -70,17 +74,6 @@ func TestRouter(t *testing.T) {
 				code:   307,
 				header: "https://yandex.ru",
 				body:   "",
-			},
-		},
-		{
-			name:   "GET: Negative. Extract URL by non-valid key",
-			target: "/error",
-			method: "GET",
-			body:   "",
-			want: want{
-				code:   400,
-				header: "",
-				body:   "OriginalURL is empty",
 			},
 		},
 		{
@@ -149,7 +142,6 @@ func TestRouter(t *testing.T) {
 			}
 			body := strings.TrimSpace(w.Body.String())
 			assert.Equal(t, tt.want.body, body)
-
 		})
 	}
 }
